@@ -36,6 +36,9 @@ const client = new tmi.Client({
 
 client.connect();
 
+// Running timed follow message
+setInterval(() => {client.say(`#tiredmelon_`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 600000);
+
 client.on('message', (channel, tags, message, self) => {
 	const isNotBot = tags.username.toLowerCase() !== process.env.TWITCH_BOT_USERNAME
     if (!isNotBot) return;
@@ -51,6 +54,8 @@ client.on('message', (channel, tags, message, self) => {
     if (!matches) return;
 
     for (const match of matches) {
+        
+        //Detecting matches
         if (!match) continue;
         const args = message.split(' ');
         const command = match.toLowerCase().slice(1);
@@ -59,6 +64,8 @@ client.on('message', (channel, tags, message, self) => {
         console.log(`[DEBUG] Command type (should be string): ${typeof command}`);
 
         // Hard-coding in some special cases
+
+        // Shout out command
         if(command === 'so') {
             console.log(`[DEBUG] Special case accessed. Command: ${command}`);
             if (tags.mod || tags.username === 'tiredmelon_') {    
@@ -70,14 +77,16 @@ client.on('message', (channel, tags, message, self) => {
         
                 }
 
-                client.say(channel, `Shoutout to ${targetUser}! Check out their channel at https://twitch.tv/${targetUser}`);
-                console.log(`[DEBUG] Sent shoutout for ${targetUser}`);
+                client.say(channel, `Shoutout to ${targetUser.charAt(0) === '@' ? targetUser.slice(1) : targetUser}! Check out their channel at https://twitch.tv/${targetUser.charAt(0) === '@' ? targetUser.slice(1) : targetUser}`);
+                console.log(`[DEBUG] Channel is ${channel} of type ${typeof channel}`);
+                console.log(`[DEBUG] Sent shoutout for ${targetUser.charAt(0) === '@' ? targetUser : targetUser.slice(1)}! Check out their channel at https://twitch.tv/${targetUser.charAt(0) === '@' ? targetUser.slice(1) : targetUser}`);
                 return;
             }
             return;
         }
 
-        if (command === 'ad' || 'ads' || 'adbreak' ) {
+        // Ad break command
+        if (command === 'ads') {
             console.log(`[DEBUG] Special case accessed. Command: ${command}`);
             if(tags.mod || tags.username === 'tiredmelon_') {
                 client.say(channel, `Going on an ad break! We have to run 3 minutes of ads every hour, so feel free to use the time to do some self-care! Friendly reminder: Subscribers don't see ads! It's not required by any means, but always appreciated!`);
@@ -85,7 +94,9 @@ client.on('message', (channel, tags, message, self) => {
             }
             return;
         }
+
         
+
 
         const {response} = commands[command] || {};
 
