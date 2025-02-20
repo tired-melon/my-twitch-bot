@@ -1,6 +1,8 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
-const tmi = require('tmi.js');
+
+import tmi from 'tmi.js';
 
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
 
@@ -33,16 +35,55 @@ const asyncCommandLib = {
 // Array of commands with authority reqs
 const specialCommands = ['so', 'ads'];
 
+const clientId = process.env.CLIENT_ID;
+const accessToken = process.env.TWITCH_OAUTH_TOKEN
+const userId = process.env.USER_ID;
+const username = process.env.TWITCH_BOT_USERNAME; 
+	
+	
+
 const client = new tmi.Client({
 	options: { debug: true },
 	identity: {
-		username: process.env.TWITCH_BOT_USERNAME,
-		password: process.env.TWITCH_OAUTH_TOKEN
+		username: username,
+		password: accessToken
 	},
 	channels: [ 'tiredmelon_' ]
 });
 
+import { StaticAuthProvider } from '@twurple/auth';
+import { ApiClient } from '@twurple/api';
+import { PubSubClient } from '@twurple/pubsub';
+
+const authProvider = new StaticAuthProvider(clientId, accessToken);
+const apiClient = new ApiClient({ authProvider });
+const pubSubClient = new PubSubClient({ apiClient });
+
+
 client.connect();
+// Testing redeem reading
+
+async function startPubSub() {
+    try {
+        // No need for .connect(), Twurple handles it internally
+        console.log('[INIT] PubSub initialized!');
+        console.log('[CHECK] Checking if PubSub is running correctly...');
+        
+        await pubSubClient.onRedemption('channel-points', userId, (message) => {
+            console.log(`${message.userDisplayName} redeemed: ${message.rewardTitle}`);
+        });
+
+        console.log('[CHECK] Listening for channel point redemptions...');
+
+    } catch (error) {
+        console.error('[ERROR] PubSub Error:', error);
+        console.log('[RECONNECTING] Reconnecting in 10 seconds...');
+        setTimeout(startPubSub, 10000);
+    }
+}
+
+startPubSub();
+
 
 // Running timed follow message
 setInterval(() => {client.say(`#tiredmelon_`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 900000);

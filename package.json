@@ -10,7 +10,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@twurple/api": "^7.2.1",
+    "@twurple/auth": "^7.2.1",
+    "@twurple/pubsub": "^7.2.1",
     "dotenv": "^16.4.7",
-    "tmi.js": "^1.8.5"
+    "tmi.js": "^1.8.5",
+    "twitch": "^4.6.7",
+    "twitch-auth": "^4.6.7",
+    "twitch-pubsub-client": "^4.6.7"
   }
 }
