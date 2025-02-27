@@ -1,3 +1,5 @@
+// TO DO: regular bot features work again. PubSub is a different story but the pieces are in place now to fix it. 
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -10,16 +12,13 @@ const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
 
 const asyncCommandLib = {
     socials: {
-        response: "Wanna know what melon will do next? Stay updated with melon's social media accounts! Bluesky: https://bsky.app/profile/tired-melon.bsky.social YouTube: https://www.youtube.com/@tiredMelonYTInstagram: https://www.instagram.com/melon.is.tired/",
+        response: "Wanna know what melon will do next? Stay updated with melon's social media accounts! Bluesky: https://bsky.app/profile/tired-melon.bsky.social YouTube: https://www.youtube.com/@tiredMelonYT Instagram: https://www.instagram.com/melon.is.tired/",
     },
     discord: {
         response: "Wanna communicate with the hoard? Join the discord for updates and community events! https://discord.gg/53rtntWnzw",
     },
     follow: {
         response: "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!",
-    },
-    ads: {
-        response: "Going on an ad break! We have to run 3 minutes of ads every hour, so feel free to use the time to do some self-care! Friendly reminder: Subscribers don't see ads! It's not required by any means, but always appreciated!",
     },
     lurk: {
         response: (user) => `${user} sinks into the abyss of treasure. Thanks for the lurk!`,
@@ -35,61 +34,35 @@ const asyncCommandLib = {
 // Array of commands with authority reqs
 const specialCommands = ['so', 'ads'];
 
-const clientId = process.env.CLIENT_ID;
-const accessToken = process.env.TWITCH_OAUTH_TOKEN
-const userId = process.env.USER_ID;
-const username = process.env.TWITCH_BOT_USERNAME; 
-	
-	
+const clientId = process.env.STREAMER_CLIENT_ID;
+const clientSecret = process.env.STREAMER_CLIENT_SECRET;
+const accessToken = process.env.BOT_OAUTH_TOKEN;
+const userId = process.env.STREAMER_USER_ID;
+const username = process.env.BOT_USERNAME; 
+const streamerName = process.env.channel;
 
 const client = new tmi.Client({
 	options: { debug: true },
 	identity: {
 		username: username,
-		password: accessToken
+		password: accessToken,
 	},
-	channels: [ 'tiredmelon_' ]
+	channels: [ streamerName ]
 });
 
 import { StaticAuthProvider } from '@twurple/auth';
-import { ApiClient } from '@twurple/api';
 import { PubSubClient } from '@twurple/pubsub';
+import fs from 'fs';
 
 const authProvider = new StaticAuthProvider(clientId, accessToken);
-const apiClient = new ApiClient({ authProvider });
-const pubSubClient = new PubSubClient({ apiClient });
-
+const pubSubClient = new PubSubClient({ authProvider });
 
 client.connect();
-// Testing redeem reading
-
-async function startPubSub() {
-    try {
-        // No need for .connect(), Twurple handles it internally
-        console.log('[INIT] PubSub initialized!');
-        console.log('[CHECK] Checking if PubSub is running correctly...');
-        
-        await pubSubClient.onRedemption('channel-points', userId, (message) => {
-            console.log(`${message.userDisplayName} redeemed: ${message.rewardTitle}`);
-        });
-
-        console.log('[CHECK] Listening for channel point redemptions...');
-
-    } catch (error) {
-        console.error('[ERROR] PubSub Error:', error);
-        console.log('[RECONNECTING] Reconnecting in 10 seconds...');
-        setTimeout(startPubSub, 10000);
-    }
-}
-
-startPubSub();
-
-
 // Running timed follow message
-setInterval(() => {client.say(`#tiredmelon_`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 900000);
+setInterval(() => {client.say(`#${streamerName}`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 900000);
 
 client.on('message', (channel, tags, message, self) => {
-	const isNotBot = tags.username.toLowerCase() !== process.env.TWITCH_BOT_USERNAME
+	const isNotBot = tags.username.toLowerCase() !== process.env.BOT_USERNAME
     if (!isNotBot) return;
     if (typeof message !== 'string') return;
     if (self) return;
@@ -150,18 +123,39 @@ client.on('message', (channel, tags, message, self) => {
                     }
                 }
                 return commandCheck;
-            };
-
-            if (typeof response === 'function' && isSpecialCommand) {
-                console.log(`[DEBUG] Sending response (function)`);
-                client.say(channel, response(tags.username));
-            } else if (typeof response === 'string') {
-                console.log(`[DEBUG] Sending response (string)`)
-                client.say(channel, response);
-            } else {
-                console.log(`[DEBUG] Response not found for command: ${command}`);
-                console.log(`[DEBUG] Response is of type ${typeof response}`);
-            }
+            };  
+        }
+        
+        if (typeof response === 'function') {
+            console.log(`[DEBUG] Sending response (function)`);
+            client.say(channel, response(tags.username));
+        } else if (typeof response === 'string') {
+            console.log(`[DEBUG] Sending response (string)`)
+            client.say(channel, response);
+        } else {
+            console.log(`[DEBUG] Response not found for command: ${command}`);
+            console.log(`[DEBUG] Response is of type ${typeof response}`);
         }
     }
 });
+
+
+// Testing redeem reading
+
+async function startPubSub() {
+    try {
+        console.log('[INIT] PubSub initialized!');
+        console.log('[CHECK] Checking if PubSub is running correctly...')
+        
+        await pubSubClient.onRedemption(userId, (message) => {
+            console.log(`[REDEEM] ${message.userDisplayName} redeemed: ${message.rewardTitle}`);
+        });
+
+        console.log('[CHECK] Listening for channel point redemptions...');
+        console.log('[PASS] PubSub is connected!');
+
+    } catch (error) {
+        console.error('[ERROR] PubSub Error:', error);
+    }
+}
+startPubSub();
