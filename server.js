@@ -1,4 +1,4 @@
-// TO DO: regular bot features work again. PubSub is a different story but the pieces are in place now to fix it. 
+// TO DO: Everything works now, just gotta actually write in redeems now
 
 import dotenv from 'dotenv';
 dotenv.config();
