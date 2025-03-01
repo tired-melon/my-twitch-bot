@@ -1,4 +1,4 @@
-// TO DO: Everything works now, just gotta actually write in redeems now
+// TO DO: Everything works now, just gotta actually write in redeems (redeems.js) now
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -35,7 +35,7 @@ const asyncCommandLib = {
 const specialCommands = ['so', 'ads'];
 
 const clientId = process.env.STREAMER_CLIENT_ID;
-const clientSecret = process.env.STREAMER_CLIENT_SECRET;
+const streamerAuth = process.env.STREAMER_OAUTH_TOKEN;
 const accessToken = process.env.BOT_OAUTH_TOKEN;
 const userId = process.env.STREAMER_USER_ID;
 const username = process.env.BOT_USERNAME; 
@@ -52,9 +52,8 @@ const client = new tmi.Client({
 
 import { StaticAuthProvider } from '@twurple/auth';
 import { PubSubClient } from '@twurple/pubsub';
-import fs from 'fs';
 
-const authProvider = new StaticAuthProvider(clientId, accessToken);
+const authProvider = new StaticAuthProvider(clientId, streamerAuth);
 const pubSubClient = new PubSubClient({ authProvider });
 
 client.connect();
@@ -62,7 +61,7 @@ client.connect();
 setInterval(() => {client.say(`#${streamerName}`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 900000);
 
 client.on('message', (channel, tags, message, self) => {
-	const isNotBot = tags.username.toLowerCase() !== process.env.BOT_USERNAME
+	const isNotBot = tags.username.toLowerCase() !== username
     if (!isNotBot) return;
     if (typeof message !== 'string') return;
     if (self) return;
@@ -89,8 +88,8 @@ client.on('message', (channel, tags, message, self) => {
 
         // Authority check
 
-        if (tags.mod || tags.username === 'tiredmelon_') {
-            console.log(`[DEBUG] Special case accessed. Command: ${command}`);
+        if (tags.mod || tags.username === streamerName.toLowerCase()) {
+            console.log(`[DEBUG] User with auth in chat. Command: ${command}`);
 
             // Shoutout Command
             if (command === 'so') {  
@@ -140,9 +139,10 @@ client.on('message', (channel, tags, message, self) => {
 });
 
 
-// Testing redeem reading
-
 async function startPubSub() {
+
+    // Redeems! This function starts PubSub and handles redeem logic
+
     try {
         console.log('[INIT] PubSub initialized!');
         console.log('[CHECK] Checking if PubSub is running correctly...')

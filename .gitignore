@@ -1,5 +1,4 @@
 node_modules
 .env
 twitch_scopes.json
-redeems.json
 tokens.json
