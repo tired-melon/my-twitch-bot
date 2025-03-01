@@ -1,5 +1,5 @@
-// Holding all the redeem functions so I don't have to throw them all in a singular massive function
+// Holding all the redeem functions here so I don't have to throw them all in a singular massive function
 
 const dailyGold = (user) => {
-    var log = JSON.parse(daily_log)
+    console.log(`${user} redeemed their daily gold!`)
 }
