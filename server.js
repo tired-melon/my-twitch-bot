@@ -1,5 +1,4 @@
 // TO DO: Everything works now, just gotta actually write in redeems (redeems.js) now
-
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -149,6 +148,9 @@ async function startPubSub() {
         
         await pubSubClient.onRedemption(userId, (message) => {
             console.log(`[REDEEM] ${message.userDisplayName} redeemed: ${message.rewardTitle}`);
+            if(message.rewardTitle === 'Daily Gold') {
+                return
+            }
         });
 
         console.log('[CHECK] Listening for channel point redemptions...');
