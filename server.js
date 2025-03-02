@@ -150,7 +150,7 @@ async function startPubSub() {
         
         await pubSubClient.onRedemption(userId, (message) => {
             console.log(`[REDEEM] ${message.userDisplayName} redeemed: ${message.rewardTitle}`);
-            if(message.rewardTitle === 'Hello!') {
+            if(message.rewardTitle === 'Daily Gold') {
                const newCount = dailyGold(message.userDisplayName);
                 client.say(`#${streamerName}`, `Thank you @${message.userDisplayName} for redeeming your daily gold! You've collected ${newCount} gold so far. Enjoy!`);
             }
