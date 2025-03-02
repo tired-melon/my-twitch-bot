@@ -1,19 +1,15 @@
 // Holding all the redeem functions here so I don't have to throw them all in a singular massive function
-const fs = require('fs');
+import fs from 'fs'
 
+const FILE_PATH = 'daily_log.json'
 
-fetch('daily_log.json')
-    .then(response => response.json())
-    .then(data => console.log(data))
-    .catch(error => console.error('Error fetching JSON:', error));
-
-const dailyGold = (username) => {
-    console.log(`${user} redeemed their daily gold!`);
-    let data = fs.readFileSync('daily_log.json', 'utf-8');
+export function dailyGold(username) {
+    console.log(`${username} redeemed their daily gold!`);
     try {
+        let data = fs.readFileSync(FILE_PATH, 'utf-8');
         let jsonData = JSON.parse(data);
 
-        let user = jsonData.find(chatter => chatter.name === user);
+        let user = jsonData.find(chatter => chatter.name === username);
 
         if (user) {
             user.redeems++;
@@ -21,12 +17,13 @@ const dailyGold = (username) => {
             jsonData.push({ name: username, redeems: 1 });
         }
 
-        fs.writeFileSync('daily_log.json', JSON.stringify(jsonData, null, 4));
+        fs.writeFileSync(FILE_PATH, JSON.stringify(jsonData, null, 4));
 
         console.log(`[SUCCESS] Daily Gold reedemed by ${username}`);
+
+        return user.redeems
+        
     } catch(err) {
         console.error('[ERROR] Could not update redeems', err);
     }
 }
-
-dailyGold('tiredmelon_');

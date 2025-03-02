@@ -137,6 +137,8 @@ client.on('message', (channel, tags, message, self) => {
     }
 });
 
+// Importing redeems for PubSub to use
+import { dailyGold } from './redeems.js';
 
 async function startPubSub() {
 
@@ -148,8 +150,9 @@ async function startPubSub() {
         
         await pubSubClient.onRedemption(userId, (message) => {
             console.log(`[REDEEM] ${message.userDisplayName} redeemed: ${message.rewardTitle}`);
-            if(message.rewardTitle === 'Daily Gold') {
-                return
+            if(message.rewardTitle === 'Hello!') {
+               const newCount = dailyGold(message.userDisplayName);
+                client.say(`#${streamerName}`, `Thank you @${message.userDisplayName} for redeeming your daily gold! You've collected ${newCount} gold so far. Enjoy!`);
             }
         });
 
