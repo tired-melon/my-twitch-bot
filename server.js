@@ -31,7 +31,7 @@ const asyncCommandLib = {
 }
 
 // Array of commands with authority reqs
-const specialCommands = ['so', 'ads'];
+const specialCommands = ['so', 'ads', 'raid'];
 
 const clientId = process.env.STREAMER_CLIENT_ID;
 const streamerAuth = process.env.STREAMER_OAUTH_TOKEN;
@@ -106,22 +106,21 @@ client.on('message', (channel, tags, message, self) => {
                 return;
             }
 
+            // Raid Message
+            if (command === 'raid') {
+                client.say(channel, "tiredm21HYPED Mimic Raid! tiredm21HYPED Mimic Raid! tiredm21HYPED");
+                return
+            }
+
             // Ads Command
             if (command === 'ads') {
                 client.say(channel, response);
                 return;
             }
+           
             
-            // Rest of commands
-            const isSpecialCommand = () => {
-                let commandCheck = 0;
-                for (let specialCommand of specialCommands) {
-                    if (command === specialCommand) {
-                        commandCheck++;
-                    }
-                }
-                return commandCheck;
-            };  
+
+            // Rest of commands  
         }
         
         if (typeof response === 'function') {
