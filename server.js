@@ -1,14 +1,17 @@
 // TO DO: Everything works now, just gotta actually write in redeems (redeems.js) now
-import dotenv from 'dotenv';
+import dotenv from 'dotenv';  
 dotenv.config();
-
 
 import tmi from 'tmi.js';
 
+// Importing other useful commands
+import { dailyGold, goldRank, goldTop } from './redeems.js';
+import { commercial } from 'tmi.js/lib/commands.js';
+
+// Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
 
 // Commands that don't depend on messages
-
 const asyncCommandLib = {
     socials: {
         response: "Wanna know what melon will do next? Stay updated with melon's social media accounts! Bluesky: https://bsky.app/profile/tired-melon.bsky.social YouTube: https://www.youtube.com/@tiredMelonYT Instagram: https://www.instagram.com/melon.is.tired/",
@@ -28,9 +31,17 @@ const asyncCommandLib = {
     ads: {
         response: "Going on an ad break! We have to run 3 minutes of ads every hour, so feel free to use the time to do some self-care! Friendly reminder: Subscribers don't see ads! It's not required by any means, but always appreciated!",
     },
+    goldtop: {
+        response: goldTop(),
+    },
+    rank: {
+        response: (user) => goldRank(user),
+    }
+
 }
 
 // Array of commands with authority reqs
+// Less for utility and more for reference
 const specialCommands = ['so', 'ads', 'raid'];
 
 const clientId = process.env.STREAMER_CLIENT_ID;
@@ -67,11 +78,32 @@ client.on('message', (channel, tags, message, self) => {
 
     console.log(`[DEBUG] Received message: ${message}`);
 
+    // Silly chat response commands
+    
+    if (message.toLowerCase().includes('o7')) {
+        client.say(channel, 'o7')
+    }
+
+    if (message.toLowerCase().includes('o/')) {
+        // TODO REPLACE RESPONSE WITH EMOTE LATER
+        client.say(channel, 'o/')
+    }
+
+    if (message.toLowerCase().includes("ffxiv") ||
+        message.toLowerCase().includes("ff14") ||
+        message.toLowerCase().includes("final fantasy 14")) {
+        client.say(channel, 
+            'The critically acclaimed MMORPG Final Fantasy XIV? With an expanded free trial which you can play through the entirety of A Realm Reborn and the award-winning Heavensward and Stormblood expansions up to level 70 for free with no restrictions on playtime?')
+    }
+
+
+    // Logic for proper ! commands
+
     const matches = message.match(regexpCommand);
 
+    if (!matches) return;
     console.log(`[DEBUG] Found matches:`, matches);
 
-    if (!matches) return;
 
     for (const match of matches) {
         
@@ -106,7 +138,7 @@ client.on('message', (channel, tags, message, self) => {
                 return;
             }
 
-            // Raid Message
+            // Raid Message, CHANGE WHEN EMOTES EXIST
             if (command === 'raid') {
                 client.say(channel, "tiredm21HYPED Mimic Raid! tiredm21HYPED Mimic Raid! tiredm21HYPED");
                 return
@@ -115,14 +147,18 @@ client.on('message', (channel, tags, message, self) => {
             // Ads Command
             if (command === 'ads') {
                 client.say(channel, response);
+                try {
+                    commercial(channel, 180);
+                } catch(err) {
+                    console.log(`[ERROR] ${err}`)
+                    console.log("[ERROR] Can't run ads for some reason.")
+                }
                 return;
             }
-           
-            
-
-            // Rest of commands  
         }
         
+        // Rest of commands
+
         if (typeof response === 'function') {
             console.log(`[DEBUG] Sending response (function)`);
             client.say(channel, response(tags.username));
@@ -135,9 +171,6 @@ client.on('message', (channel, tags, message, self) => {
         }
     }
 });
-
-// Importing redeems for PubSub to use
-import { dailyGold } from './redeems.js';
 
 async function startPubSub() {
 
@@ -158,8 +191,8 @@ async function startPubSub() {
         console.log('[CHECK] Listening for channel point redemptions...');
         console.log('[PASS] PubSub is connected!');
 
-    } catch (error) {
-        console.error('[ERROR] PubSub Error:', error);
+    } catch (err) {
+        console.error('[ERROR] PubSub Error:', err);
     }
 }
 startPubSub();
