@@ -1,13 +1,14 @@
 // Holding all the redeem functions here so I don't have to throw them all in a singular massive function
 import fs from 'fs' 
 const FILE_PATH = 'daily_log.json'
-let data = fs.readFileSync(FILE_PATH, 'utf-8');
-let jsonData = JSON.parse(data);
 
 
 export function dailyGold(username) {
     console.log(`${username} redeemed their daily gold!`);
     try {
+        
+        let data = fs.readFileSync(FILE_PATH, 'utf-8');
+        let jsonData = JSON.parse(data);
 
         let user = jsonData.find(chatter => chatter.name === username);
 
@@ -29,10 +30,13 @@ export function dailyGold(username) {
 }
 
 export function sortLeaderboard() {
+    let data = fs.readFileSync(FILE_PATH, 'utf-8');
+    let jsonData = JSON.parse(data);
     return jsonData.sort((a, b) => b.redeems - a.redeems)
 }
 
 export function goldTop(top = 3) {
+
     let lb = sortLeaderboard().slice(0, top);
     let format = lb.map((user, index) => {
         let medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'

@@ -6,7 +6,6 @@ import tmi from 'tmi.js';
 
 // Importing other useful commands
 import { dailyGold, goldRank, goldTop } from './redeems.js';
-import { commercial } from 'tmi.js/lib/commands.js';
 
 // Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
@@ -77,7 +76,6 @@ client.on('message', (channel, tags, message, self) => {
     if (self) return;
 
     console.log(`[DEBUG] Received message: ${message}`);
-
     // Silly chat response commands
     
     if (message.toLowerCase().includes('o7')) {
@@ -140,19 +138,13 @@ client.on('message', (channel, tags, message, self) => {
 
             // Raid Message, CHANGE WHEN EMOTES EXIST
             if (command === 'raid') {
-                client.say(channel, "tiredm21HYPED Mimic Raid! tiredm21HYPED Mimic Raid! tiredm21HYPED");
+                client.say(channel, "tiredm21LETSGO Mimic Raid! tiredm21LETSGO Mimic Raid! tiredm21LETSGO");
                 return
             }
 
             // Ads Command
             if (command === 'ads') {
                 client.say(channel, response);
-                try {
-                    commercial(channel, 180);
-                } catch(err) {
-                    console.log(`[ERROR] ${err}`)
-                    console.log("[ERROR] Can't run ads for some reason.")
-                }
                 return;
             }
         }
