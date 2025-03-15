@@ -1,11 +1,11 @@
-// TO DO: Everything works now, just gotta actually write in redeems (redeems.js) now
-import dotenv from 'dotenv';  
-dotenv.config();
+// TODO Program dice roller
+require('dotenv').config();
 
-import tmi from 'tmi.js';
+const tmi = require('tmi.js');
 
 // Importing other useful commands
-import { dailyGold, goldRank, goldTop } from './redeems.js';
+const { dailyGold, goldRank, goldTop } = require('./redeems.js');
+const { commercial } = require('./node_modules/tmi.js/lib/commands.js')
 
 // Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
@@ -59,8 +59,8 @@ const client = new tmi.Client({
 	channels: [ streamerName ]
 });
 
-import { StaticAuthProvider } from '@twurple/auth';
-import { PubSubClient } from '@twurple/pubsub';
+const { StaticAuthProvider } =  require('@twurple/auth');
+const { PubSubClient } = require('@twurple/pubsub');
 
 const authProvider = new StaticAuthProvider(clientId, streamerAuth);
 const pubSubClient = new PubSubClient({ authProvider });
@@ -94,6 +94,14 @@ client.on('message', (channel, tags, message, self) => {
             'The critically acclaimed MMORPG Final Fantasy XIV? With an expanded free trial which you can play through the entirety of A Realm Reborn and the award-winning Heavensward and Stormblood expansions up to level 70 for free with no restrictions on playtime?')
     }
 
+    // 'Goodnight' message command
+    if (message.toLowerCase().includes(`goodnight ${username}`) &&
+        tags.username === streamerName.toLowerCase()) {
+            client.say(channel, `Goodnight! tiredm21Wave`);
+            client.disconnect();
+            console.log(`${username} is now napping until needed again!`)
+            process.exit(0);
+    }
 
     // Logic for proper ! commands
 
@@ -145,6 +153,7 @@ client.on('message', (channel, tags, message, self) => {
             // Ads Command
             if (command === 'ads') {
                 client.say(channel, response);
+                commercial(channel, 180);
                 return;
             }
         }

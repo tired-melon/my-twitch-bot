@@ -1,9 +1,9 @@
 // Holding all the redeem functions here so I don't have to throw them all in a singular massive function
-import fs from 'fs' 
+const fs = require('fs'); 
 const FILE_PATH = 'daily_log.json'
 
 
-export function dailyGold(username) {
+function dailyGold(username) {
     console.log(`${username} redeemed their daily gold!`);
     try {
         
@@ -29,13 +29,13 @@ export function dailyGold(username) {
     }
 }
 
-export function sortLeaderboard() {
+function sortLeaderboard() {
     let data = fs.readFileSync(FILE_PATH, 'utf-8');
     let jsonData = JSON.parse(data);
     return jsonData.sort((a, b) => b.redeems - a.redeems)
 }
 
-export function goldTop(top = 3) {
+function goldTop(top = 3) {
 
     let lb = sortLeaderboard().slice(0, top);
     let format = lb.map((user, index) => {
@@ -46,7 +46,7 @@ export function goldTop(top = 3) {
     return `🏆 Leaderboard 🏆\n${format.join(' | ')}`;
 }
 
-export function goldRank(username) {
+function goldRank(username) {
     let lb = sortLeaderboard();
     let rank = lb.findIndex(user => user.name === username) + 1;
 
@@ -61,3 +61,5 @@ export function goldRank(username) {
 
     return `${username}, you are ranked #${rank} with ${lb[rank-1].redeems} redeems!`;
 }
+
+module.exports = { dailyGold, goldRank, goldTop };
