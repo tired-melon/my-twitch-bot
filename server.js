@@ -1,11 +1,15 @@
-// TODO Program dice roller
+/* TODO 
+* Program dice roller
+* Debug leaderboard
+* Start process of LLM integration including grabbing training data and setting up tts system
+*/
 require('dotenv').config();
 
 const tmi = require('tmi.js');
 
 // Importing other useful commands
 const { dailyGold, goldRank, goldTop } = require('./redeems.js');
-const { commercial } = require('./node_modules/tmi.js/lib/commands.js')
+const { commercial } = require('./node_modules/tmi.js/lib/commands.js');
 
 // Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
@@ -31,7 +35,7 @@ const asyncCommandLib = {
         response: "Going on an ad break! We have to run 3 minutes of ads every hour, so feel free to use the time to do some self-care! Friendly reminder: Subscribers don't see ads! It's not required by any means, but always appreciated!",
     },
     goldtop: {
-        response: goldTop(),
+        response: () => goldTop(),
     },
     rank: {
         response: (user) => goldRank(user),
@@ -70,7 +74,9 @@ client.connect();
 setInterval(() => {client.say(`#${streamerName}`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 900000);
 
 client.on('message', (channel, tags, message, self) => {
-	const isNotBot = tags.username.toLowerCase() !== username
+
+    
+	const isNotBot = tags.username.toLowerCase() !== username;
     if (!isNotBot) return;
     if (typeof message !== 'string') return;
     if (self) return;
@@ -83,8 +89,15 @@ client.on('message', (channel, tags, message, self) => {
     }
 
     if (message.toLowerCase().includes('o/')) {
-        // TODO REPLACE RESPONSE WITH EMOTE LATER
-        client.say(channel, 'o/')
+        client.say(channel, 'tiredm21Wave');
+    }
+
+    if (message.toLowerCase() === 'tiredm21Wave') {
+        client.say(channel, 'tiredm21Wave');
+    }
+
+    if (message.toLowerCase() === 'trenti8wave') {
+        client.say(channel, 'tiredm21Wave');
     }
 
     if (message.toLowerCase().includes("ffxiv") ||
@@ -153,10 +166,9 @@ client.on('message', (channel, tags, message, self) => {
             // Ads Command
             if (command === 'ads') {
                 client.say(channel, response);
-                commercial(channel, 180);
                 return;
             }
-        }
+        };
         
         // Rest of commands
 

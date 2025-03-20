@@ -1,6 +1,6 @@
 // Holding all the redeem functions here so I don't have to throw them all in a singular massive function
 const fs = require('fs'); 
-const FILE_PATH = 'daily_log.json'
+const FILE_PATH = './daily_log.json'
 
 
 function dailyGold(username) {
@@ -21,6 +21,7 @@ function dailyGold(username) {
         fs.writeFileSync(FILE_PATH, JSON.stringify(jsonData, null, 4));
 
         console.log(`[SUCCESS] Daily Gold reedemed by ${username}`);
+        console.log(`[DEBUG] User current gold: ${user.redeems}`);
 
         return user.redeems
         
@@ -35,15 +36,20 @@ function sortLeaderboard() {
     return jsonData.sort((a, b) => b.redeems - a.redeems)
 }
 
+// TODO fix goldTop to dynamically read leaderboard
 function goldTop(top = 3) {
+    try {
+        let lb = sortLeaderboard().slice(0, top);
+        console.log(lb);
+        let format = lb.map((user, index) => {
+            let medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'
+            return `${medal} ${user.name} - ${user.redeems} redeems`;
+        });
 
-    let lb = sortLeaderboard().slice(0, top);
-    let format = lb.map((user, index) => {
-        let medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'
-        return `${medal} ${user.name} - ${user.redeems} redeems`;
-    });
-
-    return `🏆 Leaderboard 🏆\n${format.join(' | ')}`;
+        return `🏆 Leaderboard 🏆\n${format.join(' | ')}`;
+    } catch (err) {
+        console.log('[Error] Failed to create leaderboard', err);
+    }
 }
 
 function goldRank(username) {
@@ -55,7 +61,7 @@ function goldRank(username) {
     }
 
     if (rank <= 3) {
-        let medal = rank === 1 ? '🥇' : index === 2 ? '🥈' : '🥉'
+        let medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'
         return ` ${medal} Here's your medal, @${username}! You're rank #${rank}!`
     }
 
