@@ -54,15 +54,16 @@ function goldTop(top = 3) {
 
 function goldRank(username) {
     let lb = sortLeaderboard();
-    let rank = lb.findIndex(user => user.name === username) + 1;
+    let rank = lb.findIndex(user => user.name.toLowerCase() === username) + 1;
 
+    console.log("[REDEEM] Rank checked by ", username)
     if (!rank) {
         return `Redeem your daily gold to join the leaderboard, ${username}!`
     }
 
     if (rank <= 3) {
         let medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'
-        return ` ${medal} Here's your medal, @${username}! You're rank #${rank}!`
+        return ` ${medal} Here's your medal, ${username}! You're rank #${rank}!`
     }
 
     return `${username}, you are ranked #${rank} with ${lb[rank-1].redeems} redeems!`;

@@ -1,11 +1,12 @@
 /* TODO 
 * Program dice roller
-* Debug leaderboard
+* Set-up TTS System
 * Start process of LLM integration including grabbing training data and setting up tts system
 */
 require('dotenv').config();
 
 const tmi = require('tmi.js');
+const say = require('say');
 
 // Importing other useful commands
 const { dailyGold, goldRank, goldTop } = require('./redeems.js');
@@ -153,11 +154,11 @@ client.on('message', (channel, tags, message, self) => {
                 }
                 client.say(channel, `Shoutout to ${shoutoutName}! Check out their channel at https://twitch.tv/${shoutoutName}`);
                 console.log(`[DEBUG] Channel is ${channel} of type ${typeof channel} (should be string)`);
-                console.log(`[DEBUG] Sent shoutout for ${shoutoutName}!}`);
+                console.log(`[DEBUG] Sent shoutout for ${shoutoutName}!`);
                 return;
             }
 
-            // Raid Message, CHANGE WHEN EMOTES EXIST
+            // Raid Message
             if (command === 'raid') {
                 client.say(channel, "tiredm21LETSGO Mimic Raid! tiredm21LETSGO Mimic Raid! tiredm21LETSGO");
                 return
@@ -191,13 +192,21 @@ async function startPubSub() {
 
     try {
         console.log('[INIT] PubSub initialized!');
-        console.log('[CHECK] Checking if PubSub is running correctly...')
+        console.log('[CHECK] Checking if PubSub is running correctly...');
         
+        // Redeem Handler
         await pubSubClient.onRedemption(userId, (message) => {
             console.log(`[REDEEM] ${message.userDisplayName} redeemed: ${message.rewardTitle}`);
+
+            // Daily Gold
             if(message.rewardTitle === 'Daily Gold') {
                 const newCount = dailyGold(message.userDisplayName);
                 client.say(`#${streamerName}`, `Thank you @${message.userDisplayName} for redeeming your daily gold! You've collected ${newCount ? newCount : 1} gold so far. Enjoy!`);
+            }
+
+            // Hello
+            if(message.rewardTitle === 'Hello!') {
+                client.say(`#${streamerName}`, 'Hello! tiredm21Wave');
             }
         });
 
