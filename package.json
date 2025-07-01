@@ -11,11 +11,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@twurple/api": "^7.2.1",
+    "@twurple/api": "^7.3.0",
     "@twurple/auth": "^7.2.1",
     "@twurple/chat": "^7.2.1",
     "@twurple/eventsub-http": "^7.2.1",
-    "@twurple/eventsub-ws": "^7.2.1",
+    "@twurple/eventsub-ws": "^7.3.0",
     "@twurple/pubsub": "^7.2.1",
     "dotenv": "^16.4.7",
     "install": "^0.13.0",

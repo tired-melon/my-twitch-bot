@@ -1,11 +1,25 @@
+// TODO: Test TTS, start LLM Integration process (probably switching to python for that codebase)
+
+const { StaticAuthProvider } = require('@twurple/auth');
+const { ApiClient } = require('@twurple/api');
+const { EventSubWsListener } = require('@twurple/eventsub-ws');
 require('dotenv').config();
 
 const tmi = require('tmi.js');
-const say = require('say');
+
+const accessToken = process.env.BOT_OAUTH_TOKEN;
+const username = process.env.BOT_USERNAME; 
+const streamerName = process.env.CHANNEL;
+const clientId = process.env.STREAMER_CLIENT_ID;
+const streamerAccessToken = process.env.STREAMER_OAUTH_TOKEN;
+const userId = process.env.STREAMER_USER_ID;
+
+const authProvider = new StaticAuthProvider(clientId, streamerAccessToken);
+const apiClient = new ApiClient({ authProvider });
+const listener = new EventSubWsListener({ apiClient });
 
 // Importing other useful commands
 const { dailyGold, goldRank, goldTop } = require('./redeems.js');
-const { commercial } = require('./node_modules/tmi.js/lib/commands.js');
 
 // Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
@@ -52,14 +66,7 @@ const asyncCommandLib = {
 
 // Array of commands with authority reqs
 // Less for utility and more for reference
-const specialCommands = ['so', 'ads', 'raid'];
-
-const clientId = process.env.STREAMER_CLIENT_ID;
-const streamerAuth = process.env.STREAMER_OAUTH_TOKEN;
-const accessToken = process.env.BOT_OAUTH_TOKEN;
-const userId = process.env.STREAMER_USER_ID;
-const username = process.env.BOT_USERNAME; 
-const streamerName = process.env.CHANNEL;
+// specialCommands = ['so', 'ads', 'raid'];
 
 const client = new tmi.Client({
 	options: { debug: true },
@@ -69,12 +76,6 @@ const client = new tmi.Client({
 	},
 	channels: [ streamerName ]
 });
-
-const { StaticAuthProvider } =  require('@twurple/auth');
-const { PubSubClient } = require('@twurple/pubsub');
-
-const authProvider = new StaticAuthProvider(clientId, streamerAuth);
-const pubSubClient = new PubSubClient({ authProvider });
 
 client.connect();
 // Running timed follow message
@@ -192,6 +193,32 @@ client.on('message', (channel, tags, message, self) => {
     }
 });
 
+async function start() {
+
+  await listener.start();
+
+  listener.onChannelRedemptionAdd(userId, event => {
+    console.log(`[✅ Redeemed] ${event.userDisplayName} used ${event.rewardTitle}`);
+    // Daily Gold
+    if (event.rewardTitle === 'Daily Gold') {
+        const newCount = dailyGold(event.userDisplayName);
+        client.say(`#${streamerName}`, `Thank you @${event.userDisplayName} for redeeming your daily gold! You've collected ${newCount ? newCount : 1} gold so far. Enjoy!`);
+        }
+
+    // Hello
+            if (event.rewardTitle === 'Hello!') {
+                client.say(`#${streamerName}`, 'Hello! tiredm21Wave');
+            }
+        });
+    console.log('✅ EventSub listener started successfully!');
+  console.log('✅ Listening for channel point redemptions...');
+}
+
+start().catch(console.error);
+
+/*
+* Commented out obsolete code from PubSub integration
+* This is now replaced with EventSub for better reliability and performance.
 async function startPubSub() {
 
     // Redeems! This function starts PubSub and handles redeem logic
@@ -223,3 +250,4 @@ async function startPubSub() {
     }
 }
 startPubSub();
+*/
