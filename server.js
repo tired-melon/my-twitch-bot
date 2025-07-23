@@ -1,4 +1,9 @@
-// TODO: Test TTS, start LLM Integration process (probably switching to python for that codebase)
+// TODO: Implement shop with test item into server.js, Figure out how to make it work with the Twitch API, Implement test and Special Stream settings, Add lifetime gold stat under users
+
+// STREAM-RELATED SETTINGS //
+// Change these by hand to edit the interval of events
+let isSpecialStream = true; // Set to true if this is a special stream, like a charity stream, event, or a subathon
+let isTesting = false; // Set to true if you are testing the bot, this will change some functionalities
 
 const { StaticAuthProvider } = require('@twurple/auth');
 const { ApiClient } = require('@twurple/api');
@@ -19,7 +24,9 @@ const apiClient = new ApiClient({ authProvider });
 const listener = new EventSubWsListener({ apiClient });
 
 // Importing other useful commands
-const { dailyGold, goldRank, goldTop } = require('./redeems.js');
+const { dailyGold, goldRank, goldTop, wallet, shopDescription, shopInventory, vipCheck, shopDescriptionObject, distributeGold } = require('./redeems.js');
+const { goldSound, disconnectOBS } = require('./obs_functions.js');
+const { Channel } = require('twitch');
 
 // Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
@@ -50,6 +57,15 @@ const asyncCommandLib = {
     rank: {
         response: (user) => goldRank(user),
     },
+    gold: {
+        response: (user) => wallet(user),
+    },
+    goldinfo: {
+        response: () => `Gold is a currency that you can earn by participating in the chat and redeeming daily gold. You can use it to buy items in the shop! To view your current gold, use the command !gold.`
+    },
+    shop: {
+        response: shopDescriptionObject,
+    },
     roll: {
         response: (user) => {
             let roll = (1 + Math.random() * 19).toFixed(0);
@@ -77,19 +93,80 @@ const client = new tmi.Client({
 	channels: [ streamerName ]
 });
 
+
+
 client.connect();
 // Running timed follow message
 setInterval(() => {client.say(`#${streamerName}`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 900000);
 
+// ==========EVENTS========== //   
+// Beginning of raining gold event implementation
+let isRaining = false; // initial state for raining gold
+let rainCatchers = []; // Array to hold users who catch gold during the event
+
+// TEST EVENT: Raining Gold //
+// Uncomment to test the raining gold event //
+
+/*
+isRaining = true;
+client.say(`#${streamerName}`, "🪙 It's raining gold! Send a message in chat to catch some! 🪙");
+setTimeout(() => {
+    if (rainCatchers.length > 0) {
+        distributeGold(rainCatchers);
+        client.say(`#${streamerName}`, `Gold has been distributed to: ${rainCatchers.join(', ')}!`);
+        console.log(`[DEBUG] Distributed gold to ${rainCatchers.length} users.`);
+    } else {
+        client.say(`#${streamerName}`, "No one caught any gold this time!");
+        console.log("[DEBUG] No users caught gold.");
+    }
+
+    isRaining = false; // Stop the raining gold event
+    rainCatchers = []; // Reset the catchers for the next event
+}, 30000); // Raining gold lasts for 30 seconds
+
+*/
+
+setInterval(() => {
+    goldSound();
+    client.say(`#${streamerName}`, "🪙 It's raining gold! Send a message in chat to catch some! 🪙");
+    isRaining = true;
+    console.log("[DEBUG] rainingGold Event initiated!");
+    setTimeout(() => {
+        if (rainCatchers.length > 0) {
+            distributeGold(rainCatchers);
+            client.say(`#${streamerName}`, `Gold has been distributed to: ${rainCatchers.join(', ')}!`);
+            console.log(`[DEBUG] Distributed gold to ${rainCatchers.length} users.`);
+        } else {
+            client.say(`#${streamerName}`, "No one caught any gold this time!");
+            console.log("[DEBUG] No users caught gold.");
+        }
+
+        isRaining = false; // Stop the raining gold event
+        rainCatchers = []; // Reset the catchers for the next event
+        console.log("[DEBUG] Raining gold event ended.");
+    }, 60000); // Raining gold lasts for 60 seconds
+
+    }, ((3600000 + Math.random() * 900000 - Math.random() * 900000) / (isSpecialStream ? 2 : 1))); // Every hour +/- somewhere between 0-15 minutes
+
+// Listening for messages in chat
 client.on('message', (channel, tags, message, self) => {
 
     
 	const isNotBot = tags.username.toLowerCase() !== username;
-    if (!isNotBot) return;
-    if (typeof message !== 'string') return;
+    if (!isNotBot) return; // Ignore messages from the bot itself
+    if (typeof message !== 'string') return; // Juuuuuuust in case, but should always be a string
+    if (message.includes('!pokecatch')) return; // Ignore pokecatch messages, handled by another module
     if (self) return;
 
-    console.log(`[DEBUG] Received message: ${message}`);
+    // Internal logic for raining gold event
+    if (isRaining) {
+        if (message && !rainCatchers.includes(tags.username) && tags.username !== streamerName.toLowerCase()) {
+            rainCatchers.push(tags.username);
+            console.log(`[RAIN] ${tags.username} caught some gold!`);
+        }
+    }
+    
+
     // Silly chat response commands
     
     if (message.toLowerCase().includes('o7')) {
@@ -98,6 +175,10 @@ client.on('message', (channel, tags, message, self) => {
 
     if (message.toLowerCase().includes('o/')) {
         client.say(channel, 'tiredm21Wave');
+    }
+
+    if (message.toLowerCase().includes('gavins8lurk')) {
+        client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`)
     }
 
     if (message.toLowerCase() === 'tiredm21Wave') {
@@ -119,6 +200,7 @@ client.on('message', (channel, tags, message, self) => {
     if (message.toLowerCase().includes(`goodnight ${username}`) &&
         tags.username === streamerName.toLowerCase()) {
             client.say(channel, `Goodnight! tiredm21Wave`);
+            disconnectOBS();
             client.disconnect();
             console.log(`${username} is now napping until needed again!`)
             process.exit(0);
@@ -186,6 +268,35 @@ client.on('message', (channel, tags, message, self) => {
         } else if (typeof response === 'string') {
             console.log(`[DEBUG] Sending response (string)`)
             client.say(channel, response);
+        } else if (typeof response === 'object') {
+            console.log(`[DEBUG] Sending response (object)`);
+            try{
+                client.say(channel, response.message1);
+                console.log(`[DEBUG] Sent message1: ${response.message1}`);
+                if (response.message2) {
+                    setTimeout(() => {
+                    client.say(channel, response.message2), 2000
+                    });
+                }
+                if (response.message3) {
+                    setTimeout(() => {
+                    client.say(channel, response.message3)
+                }), 4000
+                }
+                if (response.message4) {
+                    setTimeout(() => {
+                    client.say(channel, response.message4)
+                }), 6000
+                }
+                if (response.message5) {
+                    setTimeout(() => {
+                    client.say(channel, response.message5)
+                }), 8000
+                }
+                
+            } catch (err) {
+                console.error('[ERROR] Failed to send object response', err);
+            }
         } else {
             console.log(`[DEBUG] Response not found for command: ${command}`);
             console.log(`[DEBUG] Response is of type ${typeof response}`);
@@ -202,52 +313,22 @@ async function start() {
     // Daily Gold
     if (event.rewardTitle === 'Daily Gold') {
         const newCount = dailyGold(event.userDisplayName);
-        client.say(`#${streamerName}`, `Thank you @${event.userDisplayName} for redeeming your daily gold! You've collected ${newCount ? newCount : 1} gold so far. Enjoy!`);
+        client.say(`#${streamerName}`, `Thank you @${event.userDisplayName} for redeeming your daily gold! You've acquired gold ${newCount[0] ? newCount[0] : 1} times so far and you currently have ${newCount[1] ? newCount[1] : 1} gold in your wallet. Enjoy!`);
         }
+
 
     // Hello
             if (event.rewardTitle === 'Hello!') {
                 client.say(`#${streamerName}`, 'Hello! tiredm21Wave');
             }
+            if (isTesting && event.userName === streamerName) {
+                // Add whatever you need to test here
+                goldSound();
+            }
         });
     console.log('✅ EventSub listener started successfully!');
-  console.log('✅ Listening for channel point redemptions...');
+    console.log('✅ Listening for channel point redemptions...');
 }
 
 start().catch(console.error);
 
-/*
-* Commented out obsolete code from PubSub integration
-* This is now replaced with EventSub for better reliability and performance.
-async function startPubSub() {
-
-    // Redeems! This function starts PubSub and handles redeem logic
-
-    try {
-        console.log('[INIT] PubSub initialized!');
-        
-        // Redeem Handler
-        await pubSubClient.onRedemption(userId, (message) => {
-            console.log(`[REDEEM] ${message.userDisplayName} redeemed: ${message.rewardTitle}`);
-
-            // Daily Gold
-            if (message.rewardTitle === 'Daily Gold') {
-                const newCount = dailyGold(message.userDisplayName);
-                client.say(`#${streamerName}`, `Thank you @${message.userDisplayName} for redeeming your daily gold! You've collected ${newCount ? newCount : 1} gold so far. Enjoy!`);
-            }
-
-            // Hello
-            if (message.rewardTitle === 'Hello!') {
-                client.say(`#${streamerName}`, 'Hello! tiredm21Wave');
-            }
-        });
-
-        console.log('[CHECK] Listening for channel point redemptions...');
-        console.log('[PASS] PubSub is connected!');
-
-    } catch (err) {
-        console.error('[ERROR] PubSub Error:', err);
-    }
-}
-startPubSub();
-*/
