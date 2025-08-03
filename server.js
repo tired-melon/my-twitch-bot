@@ -1,13 +1,16 @@
-// TODO: Implement shop with test item into server.js, Figure out how to make it work with the Twitch API, Implement test and Special Stream settings, Add lifetime gold stat under users
+// TODO: Implement shop with test item into server.js, Figure out how to make it work with the Twitch API, Implement test and Special Stream settings, Add lifetime gold stat under users, Begin adding Python Codebase for LLM Integration; we're giving the bot a brain :D
 
 // STREAM-RELATED SETTINGS //
 // Change these by hand to edit the interval of events
-let isSpecialStream = true; // Set to true if this is a special stream, like a charity stream, event, or a subathon
+let isSpecialStream = false; // Set to true if this is a special stream, like a charity stream, event, or a subathon
 let isTesting = false; // Set to true if you are testing the bot, this will change some functionalities
 
 const { StaticAuthProvider } = require('@twurple/auth');
 const { ApiClient } = require('@twurple/api');
 const { EventSubWsListener } = require('@twurple/eventsub-ws');
+const gTTS = require('gtts');
+const { writeFileSync } = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const tmi = require('tmi.js');
@@ -24,8 +27,10 @@ const apiClient = new ApiClient({ authProvider });
 const listener = new EventSubWsListener({ apiClient });
 
 // Importing other useful commands
-const { dailyGold, goldRank, goldTop, wallet, shopDescription, shopInventory, vipCheck, shopDescriptionObject, distributeGold } = require('./redeems.js');
-const { goldSound, disconnectOBS } = require('./obs_functions.js');
+const { dailyGold, goldRank, goldTop, wallet, shopDescriptionObject, distributeGold } = require('./redeems.js');
+const { shopDescription, shopInventory, vipCheck, purchaseItem } = require('./shop.js');
+const { goldSound, ttsRead, disconnectOBS } = require('./obs_functions.js');
+const { addToQueue, processTTSQueue, isPlaying, ttsQueue } = require('./tts_system.js');
 const { Channel } = require('twitch');
 
 // Command Regex
@@ -66,6 +71,9 @@ const asyncCommandLib = {
     shop: {
         response: shopDescriptionObject,
     },
+    buy: {
+        response: (user) => purchaseItem(user),
+    },
     roll: {
         response: (user) => {
             let roll = (1 + Math.random() * 19).toFixed(0);
@@ -99,11 +107,10 @@ client.connect();
 // Running timed follow message
 setInterval(() => {client.say(`#${streamerName}`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 900000);
 
-// ==========EVENTS========== //   
+// ==========FLAGS AND QUEUES========== //   
 // Beginning of raining gold event implementation
 let isRaining = false; // initial state for raining gold
 let rainCatchers = []; // Array to hold users who catch gold during the event
-
 // TEST EVENT: Raining Gold //
 // Uncomment to test the raining gold event //
 
@@ -155,7 +162,6 @@ client.on('message', (channel, tags, message, self) => {
 	const isNotBot = tags.username.toLowerCase() !== username;
     if (!isNotBot) return; // Ignore messages from the bot itself
     if (typeof message !== 'string') return; // Juuuuuuust in case, but should always be a string
-    if (message.includes('!pokecatch')) return; // Ignore pokecatch messages, handled by another module
     if (self) return;
 
     // Internal logic for raining gold event
@@ -165,6 +171,8 @@ client.on('message', (channel, tags, message, self) => {
             console.log(`[RAIN] ${tags.username} caught some gold!`);
         }
     }
+    
+    if (message.includes('!pokecatch')) return; // Ignore pokecatch messages, moved to after the raining gold event logic
     
 
     // Silly chat response commands
@@ -258,8 +266,27 @@ client.on('message', (channel, tags, message, self) => {
                 client.say(channel, response);
                 return;
             }
-        };
 
+            // Test TTS Command
+            if (command === 'tts') {
+                if (args.length < 2) {
+                    client.say(channel, `@${tags.username}, please provide text to convert to speech! (!tts Your text here)`);
+                    return;
+                }
+                const ttsSpeech = args.slice(1).join(' ');
+                const fileName = path.resolve(`${tags.username}_${Date.now()}.mp3`);
+                const gtts = new gTTS(ttsSpeech, 'en');
+                
+                gtts.save(fileName, (err) => {
+                    if(err) { throw new Error(err); }
+                    console.log(`[DEBUG] TTS conversion successful! File saved as ${fileName}`);
+                    addToQueue(fileName); // Add the file to the TTS queue
+                    console.log(`[DEBUG] Added ${fileName} to TTS queue.`);
+                });
+                
+                return;
+            };
+        }
         // Rest of commands
 
         if (typeof response === 'function') {
@@ -308,26 +335,44 @@ async function start() {
 
   await listener.start();
 
-  listener.onChannelRedemptionAdd(userId, event => {
-    console.log(`[✅ Redeemed] ${event.userDisplayName} used ${event.rewardTitle}`);
+    listener.onChannelRedemptionAdd(userId, event => {
+        console.log(`[✅ Redeemed] ${event.userDisplayName} used ${event.rewardTitle}`);
+
     // Daily Gold
-    if (event.rewardTitle === 'Daily Gold') {
-        const newCount = dailyGold(event.userDisplayName);
-        client.say(`#${streamerName}`, `Thank you @${event.userDisplayName} for redeeming your daily gold! You've acquired gold ${newCount[0] ? newCount[0] : 1} times so far and you currently have ${newCount[1] ? newCount[1] : 1} gold in your wallet. Enjoy!`);
+
+        if (event.rewardTitle === 'Daily Gold') {
+            const newCount = dailyGold(event.userDisplayName);
+            client.say(`#${streamerName}`, `Thank you @${event.userDisplayName} for redeeming your daily gold! You've acquired gold ${newCount[0] ? newCount[0] : 1} times so far and you currently have ${newCount[1] ? newCount[1] : 1} gold in your wallet. Enjoy!`);
         }
 
 
     // Hello
-            if (event.rewardTitle === 'Hello!') {
-                client.say(`#${streamerName}`, 'Hello! tiredm21Wave');
+
+        if (event.rewardTitle === 'Hello!') {
+            client.say(`#${streamerName}`, 'Hello! tiredm21Wave');
             }
-            if (isTesting && event.userName === streamerName) {
-                // Add whatever you need to test here
-                goldSound();
-            }
-        });
+        if (isTesting && event.userName === streamerName) {
+            // Add whatever you need to test here
+            goldSound();
+        }
+    
+    // TTS
+
+        if (event.rewardTitle === 'TTS!') {
+            const ttsSpeech = event.input;
+            const fileName = path.resolve(`${event.userDisplayName}_${Date.now()}.mp3`);
+            const gtts = new gTTS(ttsSpeech, 'en');
+            
+            gtts.save(fileName, function(err, result) {
+                if(err) { throw new Error(err); }
+                addToQueue(fileName); // Add the file to the TTS queue
+                console.log(`[DEBUG] TTS conversion successful! File saved as ${fileName}`);
+            });
+        }
+    });
     console.log('✅ EventSub listener started successfully!');
     console.log('✅ Listening for channel point redemptions...');
+
 }
 
 start().catch(console.error);
