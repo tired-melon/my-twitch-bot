@@ -3,3 +3,4 @@ node_modules
 twitch_scopes.json
 tokens.json
 daily_log.json
+testing.js

@@ -1,5 +1,6 @@
 // Holding all the redeem functions (and the shop) here so I don't have to throw them all in a singular massive function
 const fs = require('fs'); 
+const { betterRandom } = require('./testing');
 const FILE_PATH = './daily_log.json';
 
 function dailyGold(username) {
@@ -83,7 +84,7 @@ function distributeGold(users = []) {
         users.forEach(username => {
             let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
             // Define random amount of gold between 1 and 3 to give participants
-            let goldGain = 1 + Math.floor(Math.random() * 3);
+            let goldGain = 1 + Math.floor(betterRandom(3, 1));
             if (user) {
                 
                 // Update user's gold and redeems

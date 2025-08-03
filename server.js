@@ -9,7 +9,6 @@ const { StaticAuthProvider } = require('@twurple/auth');
 const { ApiClient } = require('@twurple/api');
 const { EventSubWsListener } = require('@twurple/eventsub-ws');
 const gTTS = require('gtts');
-const { writeFileSync } = require('fs');
 const path = require('path');
 require('dotenv').config();
 
@@ -28,10 +27,10 @@ const listener = new EventSubWsListener({ apiClient });
 
 // Importing other useful commands
 const { dailyGold, goldRank, goldTop, wallet, shopDescriptionObject, distributeGold } = require('./redeems.js');
-const { shopDescription, shopInventory, vipCheck, purchaseItem } = require('./shop.js');
-const { goldSound, ttsRead, disconnectOBS } = require('./obs_functions.js');
-const { addToQueue, processTTSQueue, isPlaying, ttsQueue } = require('./tts_system.js');
-const { Channel } = require('twitch');
+const { purchaseItem } = require('./shop.js');
+const { goldSound, disconnectOBS, purchaseSound } = require('./obs_functions.js');
+const { addToQueue } = require('./tts_system.js');
+const { betterRandom } = require('./testing.js'); // Hidden module, contains improved random function among other functions to be tested
 
 // Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
@@ -76,7 +75,7 @@ const asyncCommandLib = {
     },
     roll: {
         response: (user) => {
-            let roll = (1 + Math.random() * 19).toFixed(0);
+            let roll = betterRandom(20, 1);
             console.log(roll);
 
             return roll == 20 
@@ -152,8 +151,7 @@ setInterval(() => {
         rainCatchers = []; // Reset the catchers for the next event
         console.log("[DEBUG] Raining gold event ended.");
     }, 60000); // Raining gold lasts for 60 seconds
-
-    }, ((3600000 + Math.random() * 900000 - Math.random() * 900000) / (isSpecialStream ? 2 : 1))); // Every hour +/- somewhere between 0-15 minutes
+    }, (betterRandom(4500000, 2700000) / (isSpecialStream ? 2 : 1))); // Every hour +/- somewhere between 0-15 minutes
 
 // Listening for messages in chat
 client.on('message', (channel, tags, message, self) => {
@@ -302,23 +300,23 @@ client.on('message', (channel, tags, message, self) => {
                 console.log(`[DEBUG] Sent message1: ${response.message1}`);
                 if (response.message2) {
                     setTimeout(() => {
-                    client.say(channel, response.message2), 2000
-                    });
+                    client.say(channel, response.message2)
+                    }, 2000);
                 }
                 if (response.message3) {
                     setTimeout(() => {
                     client.say(channel, response.message3)
-                }), 4000
+                    }, 4000)
                 }
                 if (response.message4) {
                     setTimeout(() => {
                     client.say(channel, response.message4)
-                }), 6000
+                    }, 6000)
                 }
                 if (response.message5) {
                     setTimeout(() => {
                     client.say(channel, response.message5)
-                }), 8000
+                    }, 8000)
                 }
                 
             } catch (err) {
@@ -354,6 +352,7 @@ async function start() {
         if (isTesting && event.userName === streamerName) {
             // Add whatever you need to test here
             goldSound();
+            purchaseSound();
         }
     
     // TTS
