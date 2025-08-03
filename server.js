@@ -1,4 +1,4 @@
-// TODO: Implement shop with test item into server.js, Figure out how to make it work with the Twitch API, Implement test and Special Stream settings, Add lifetime gold stat under users, Begin adding Python Codebase for LLM Integration; we're giving the bot a brain :D
+// TODO: Figure out how to make shop work with the Twitch API, Implement test and Special Stream settings, Add lifetime gold stat under users, Begin adding Python Codebase for LLM Integration; we're giving the bot a brain :D
 
 // STREAM-RELATED SETTINGS //
 // Change these by hand to edit the interval of events
