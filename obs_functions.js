@@ -51,9 +51,9 @@ function disconnectOBS() {
 }
 
 
-async function ttsRead([files]) {
+async function ttsRead(file) {
     isPlaying = true;
-    
+    const { currentProgramSceneName } = await obs.call('GetCurrentProgramScene');
     const metadata = await parseFile(file);
     const duration = (metadata.format.duration * 1000) || 5000;// Convert to milliseconds
     console.log(`[DEBUG] TTS audio duration: ${duration}ms`);

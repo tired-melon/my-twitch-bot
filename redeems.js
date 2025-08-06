@@ -84,7 +84,7 @@ function distributeGold(users = []) {
         users.forEach(username => {
             let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
             // Define random amount of gold between 1 and 3 to give participants
-            let goldGain = 1 + Math.floor(betterRandom(3, 1));
+            let goldGain = Math.floor(betterRandom(3, 1));
             if (user) {
                 
                 // Update user's gold and redeems

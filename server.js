@@ -26,8 +26,8 @@ const apiClient = new ApiClient({ authProvider });
 const listener = new EventSubWsListener({ apiClient });
 
 // Importing other useful commands
-const { dailyGold, goldRank, goldTop, wallet, shopDescriptionObject, distributeGold } = require('./redeems.js');
-const { purchaseItem } = require('./shop.js');
+const { dailyGold, goldRank, goldTop, wallet, distributeGold } = require('./redeems.js');
+const { purchaseItem, shopDescriptionObject } = require('./shop.js');
 const { goldSound, disconnectOBS, purchaseSound } = require('./obs_functions.js');
 const { addToQueue } = require('./tts_system.js');
 const { betterRandom } = require('./testing.js'); // Hidden module, contains improved random function among other functions to be tested
