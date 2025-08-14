@@ -25,7 +25,7 @@ class Item {
     }
 }
 
-const vipItem = new Item('VIP', 100, 'Grants you VIP status in the chat, allowing you to use special commands and features.', vipCheck);
+const vipItem = new Item('VIP', 100, 'Grants you VIP status in the chat, allowing you to use special commands and features.', `You are now a VIP! Enjoy your special status in the chat! (please note that this is not automated yet, so you will need to be manually given VIP status by a mod or admin.)`);
 const discordRoleItem = new Item('Discord Role', 150, 'Grants you a special role in the Discord server, giving you a custom color and title!',
      'Thank you for purchasing! You will need to be manually given this role by a mod or admin.');
 const customChatTitleItem = new Item('Custom Chat Title', 200, 'Allows you to set a custom title that will be displayed in the chat.',
@@ -64,13 +64,14 @@ const shopDescriptionObject = shopDescription();
 
 
 function vipCheck(username) {
-    // This function will check if the user is a VIP as well as check available VIP slots and return a response accordingly.
-    // For now, it just returns a placeholder response.
-    return `You are a VIP, ${username}! Enjoy your special status in the chat! (please note that this is not automated yet, so you will need to be manually given VIP status by a mod or admin.)`;
+    // This function will check if the user is a VIP as well as check available VIP slots and return a boolean.
+    // For now, it just returns false.
+    return false;
 }
 
-function purchaseItem(username) {
-    const query = message.slice(1).join(' ');
+function purchaseItem(username, args) {
+
+    const query = args.slice(1).join(' ');
 
     let data = fs.readFileSync(FILE_PATH, 'utf-8');
     let jsonData = JSON.parse(data);
@@ -81,20 +82,26 @@ function purchaseItem(username) {
         if (!(query.toLowerCase() === item.name.toLowerCase())){
             continue;
         }
-        if (user.wallet < item.cost){ 
-            client.say(channel, `You don't have enough gold, ${username}! Have you redeemed your daily gold?`);
-            break;
+
+        if (!user || user.wallet < item.cost) { 
+            return `You don't have enough gold, ${username}! Have you redeemed your daily gold?`;
         }
-        purchaseSound();
-        user.wallet -= item.cost;
-        client.say(channel, `${item.response}`);
-        console.log(`[SUCCESS] ${item.name} purchased by ${username}!`);
+
+        if (query.toLowerCase() === item.name.toLowerCase() && user.wallet > item.cost){
+            if (item.name.toLowerCase() === `vip` && vipCheck(username)) {  
+                return `You are already a VIP, ${username}!`
+            }
+            purchaseSound();
+            user.wallet -= item.cost;
+            console.log(`[SUCCESS] ${item.name} purchased by ${username}!`);
+            return item.response;
+        }
         // Note to self, add stream alert that shows that the user purchased an item
 
         fs.writeFileSync(FILE_PATH, JSON.stringify(jsonData, null, 4));
     };
-    console.log(`[DEBUG] Item not found. Message: ${message}`);
-    client.say(channel, `Item not found! Remember, the syntax is "!buy [item]" such as "!buy Cursed Item"`);
+    console.log(`[DEBUG] Item not found. Message: ${args}`);
+    return `Item not found! Remember, the syntax is "!buy [item]" such as "!buy Cursed Item"`;
 }
 
 module.exports = {

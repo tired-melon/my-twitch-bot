@@ -13,7 +13,7 @@ async function processTTSQueue() {
     if (isPlaying || ttsQueue.length === 0) return; // already running or nothing to do
     isPlaying = true;
 
-    const file = ttsQueue.shift();
+    const file = ttsQueue.pop();
     try {
         await ttsRead(file); // waits until playback ends
     } catch (err) {
@@ -24,13 +24,13 @@ async function processTTSQueue() {
     }
 }
 
-function addToQueue(file) {
+function addToTTSQueue(file) {
     ttsQueue.push(file);
     processTTSQueue();
 }
 
 module.exports = {
-    addToQueue,
+    addToTTSQueue,
     processTTSQueue,
     ttsQueue,
     isPlaying

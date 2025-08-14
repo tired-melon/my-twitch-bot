@@ -28,8 +28,8 @@ const listener = new EventSubWsListener({ apiClient });
 // Importing other useful commands
 const { dailyGold, goldRank, goldTop, wallet, distributeGold } = require('./redeems.js');
 const { purchaseItem, shopDescriptionObject } = require('./shop.js');
-const { goldSound, disconnectOBS, purchaseSound } = require('./obs_functions.js');
-const { addToQueue } = require('./tts_system.js');
+const { goldSound, disconnectOBS, purchaseSound, addToAlertQueue } = require('./obs_functions.js');
+const { addToTTSQueue } = require('./tts_system.js');
 const { betterRandom } = require('./testing.js'); // Hidden module, contains improved random function among other functions to be tested
 
 // Command Regex
@@ -131,12 +131,15 @@ setTimeout(() => {
 }, 30000); // Raining gold lasts for 30 seconds
 
 */
-
 setInterval(() => {
     goldSound();
+
+    setTimeout(() => {
     client.say(`#${streamerName}`, "🪙 It's raining gold! Send a message in chat to catch some! 🪙");
     isRaining = true;
     console.log("[DEBUG] rainingGold Event initiated!");
+    }, 5000);
+
     setTimeout(() => {
         if (rainCatchers.length > 0) {
             distributeGold(rainCatchers);
@@ -174,6 +177,8 @@ client.on('message', (channel, tags, message, self) => {
     
 
     // Silly chat response commands
+
+    const friendLurks = ['daitan2KodiLurk', 'gavins8lurk'];
     
     if (message.toLowerCase().includes('o7')) {
         client.say(channel, 'o7')
@@ -183,7 +188,7 @@ client.on('message', (channel, tags, message, self) => {
         client.say(channel, 'tiredm21Wave');
     }
 
-    if (message.toLowerCase().includes('gavins8lurk')) {
+    if (friendLurks.includes(message.toLowerCase())) {
         client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`)
     }
 
@@ -288,8 +293,14 @@ client.on('message', (channel, tags, message, self) => {
         // Rest of commands
 
         if (typeof response === 'function') {
-            console.log(`[DEBUG] Sending response (function)`);
-            client.say(channel, response(tags.username));
+            if (command === 'buy') { // Checking for !buy
+                console.log(`[DEBUG] ${tags.username} is attempting to buy ${args.slice(1).join(' ')}`)
+                client.say(channel, `${purchaseItem(tags.username, args)}`);
+                return;
+            } else {
+                console.log(`[DEBUG] Sending response (function)`);
+                client.say(channel, response(tags.username));
+            }
         } else if (typeof response === 'string') {
             console.log(`[DEBUG] Sending response (string)`)
             client.say(channel, response);
@@ -333,6 +344,7 @@ async function start() {
 
   await listener.start();
 
+    // === CHANNEL REDEEMS === //
     listener.onChannelRedemptionAdd(userId, event => {
         console.log(`[✅ Redeemed] ${event.userDisplayName} used ${event.rewardTitle}`);
 
@@ -362,17 +374,78 @@ async function start() {
             const fileName = path.resolve(`${event.userDisplayName}_${Date.now()}.mp3`);
             const gtts = new gTTS(ttsSpeech, 'en');
             
-            gtts.save(fileName, function(err, result) {
+            gtts.save(fileName, function(err) {
                 if(err) { throw new Error(err); }
-                addToQueue(fileName); // Add the file to the TTS queue
+                addToTTSQueue(fileName); // Add the file to the TTS queue
                 console.log(`[DEBUG] TTS conversion successful! File saved as ${fileName}`);
             });
         }
     });
+
+    // === STREAM ALERTS === /
+
+    // Follow
+    listener.onChannelFollow(userId, userId, event => {
+        const follower = event.userDisplayName;
+        
+        addToAlertQueue(relevantUser1 = follower, relevantUser2 = undefined, num1 = amount, num2 = undefined, alertType = 'follow');
+    })
+
+    // Raid
+    listener.onChannelRaidTo(userId, event => {
+        const raiderName = event.raidingBroadcasterDisplayName;
+        const raidSize = event.viewers;
+
+        addToAlertQueue(relevantUser1 = raiderName, relevantUser2 = undefined, num1 = raidSize, num2 = undefined, alertType = 'raid');
+    }); 
+
+
+    // Gift Sub Flags
+    let amount = 1;
+    let gifter = ''
+    listener.onChannelSubscriptionGift(userId, event => {
+        amount = event.amount;
+        gifter = event.isAnonymous ? 'Anon' : event.gifterDisplayName;
+    });
+
+    // Subscription
+    listener.onChannelSubscription(userId, event => {
+        const subscriber = event.userDisplayName;
+        if (event.isGift) {
+            addToAlertQueue(relevantUser1 = gifter, relevantUser2 = undefined, num1 = amount, num2 = undefined, alertType = 'gift');
+            return;
+        } else {
+            addToAlertQueue(relevantUser1 = subscriber, relevantUser2 = undefined, num1 = undefined, num2 = undefined, alertType = 'sub');
+        }
+
+    })
+
+    // Bits
+    listener.onChannelCheer(userId, event => {
+        const gifter = event.userDisplayName;
+        const numBits = event.bits;
+
+        addToAlertQueue(relevantUser1 = gifter, relevantUser2 = undefined, num1 = numBits, num2 = undefined, alertType = 'bits');
+    });
+
     console.log('✅ EventSub listener started successfully!');
-    console.log('✅ Listening for channel point redemptions...');
+    console.log('✅ Listening for events...');
+
 
 }
 
 start().catch(console.error);
 
+async function alertRollCall() {
+    await new Promise(r => setTimeout(r, 3000));
+    // === THROW ASYNC TEST FUNCTIONS HERE === //
+    addToAlertQueue("testyman", undefined, 42, undefined, 'gift');
+    addToAlertQueue("yeahboiii", undefined, 12, undefined, 'raid');
+    addToAlertQueue("im a sub", undefined, undefined, undefined, 'sub');
+    addToAlertQueue("bitpusher", undefined, 69, undefined, 'bits');
+    addToAlertQueue("evil larry", undefined, undefined, undefined, 'follow');
+}
+
+if (isTesting) {
+    alertRollCall();
+}
