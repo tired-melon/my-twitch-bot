@@ -17,6 +17,7 @@
     "@twurple/eventsub-http": "^7.3.0",
     "@twurple/eventsub-ws": "^7.3.0",
     "dotenv": "^16.4.7",
+    "express": "^5.1.0",
     "gtts": "^0.2.1",
     "install": "^0.13.0",
     "music-metadata": "^11.7.3",

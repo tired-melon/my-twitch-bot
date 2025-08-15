@@ -556,7 +556,7 @@ async function subAlert(subscriber) {
 
 // Bits
 async function bitAlert(gifter, amount) {
-    const duration = 5000; // in ms
+    const duration = 3000; // in ms
     const { currentProgramSceneName } = (await obs.call('GetCurrentProgramScene'));
     const alertNameID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: 'Alert Name'})).sceneItemId;
     const alertTextID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: 'Alert Text'})).sceneItemId;

@@ -9,7 +9,14 @@ const { StaticAuthProvider } = require('@twurple/auth');
 const { ApiClient } = require('@twurple/api');
 const { EventSubWsListener } = require('@twurple/eventsub-ws');
 const gTTS = require('gtts');
+const express = require('express');
+const WebSocket = require('ws');
+const http = require('http');
 const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 require('dotenv').config();
 
 const tmi = require('tmi.js');
@@ -100,7 +107,33 @@ const client = new tmi.Client({
 	channels: [ streamerName ]
 });
 
+// Serve overlay HTML/CSS/JS
+app.use(express.static(path.join(__dirname, 'public')));
 
+// Broadcast helper function
+function broadcast(data) {
+    const json = JSON.stringify(data);
+    wss.clients.forEach(c => {
+        if (c.readyState === WebSocket.OPEN) {
+            c.send(json);
+        }
+    });
+}
+
+// === TEST CHAT SYSTEM === //
+if (isTesting) {
+    setInterval(() => {
+        broadcast({
+            type: 'chat',
+            username: 'TestUser',
+            title: 'Subscriber',
+            profilePic: 'https://picsum.photos/200/300',
+            message: 'This is a test chat bubble!'
+        });
+        console.log('Message sent on test server')
+    }, 3000);
+}
+server.listen(3000, () => {console.log('Overlay server running on localhost')});
 
 client.connect();
 // Running timed follow message
@@ -158,12 +191,21 @@ setInterval(() => {
 
 // Listening for messages in chat
 client.on('message', (channel, tags, message, self) => {
-
-    
-	const isNotBot = tags.username.toLowerCase() !== username;
-    if (!isNotBot) return; // Ignore messages from the bot itself
-    if (typeof message !== 'string') return; // Juuuuuuust in case, but should always be a string
     if (self) return;
+
+    let messageData = {
+        type: 'chat',
+        username: tags['display-name'] || tags['username'],
+        title: tags.badges?.vip ? 'VIP' : '',
+        profilePic: pro,
+        message: message
+    }
+    try{
+        broadcast(messageData);
+    } catch(e){
+        console.error('Error with Broadcasting: ', e);
+    }
+    console.log(`code run for broadcast. Data: ${messageData}`);
 
     // Internal logic for raining gold event
     if (isRaining) {
