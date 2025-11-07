@@ -105,10 +105,6 @@ function purchaseItem(username, args) {
 }
 
 module.exports = {
-    shopDescription,
-    shopInventory,
-    vipCheck,
     shopDescriptionObject,
-    purchaseItem,
-    Item
+    purchaseItem
 }

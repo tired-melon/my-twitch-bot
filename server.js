@@ -197,7 +197,7 @@ client.on('message', (channel, tags, message, self) => {
         type: 'chat',
         username: tags['display-name'] || tags['username'],
         title: tags.badges?.vip ? 'VIP' : '',
-        profilePic: pro,
+        profilePic: undefined,
         message: message
     }
     try{

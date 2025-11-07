@@ -30,8 +30,5 @@ function addToTTSQueue(file) {
 }
 
 module.exports = {
-    addToTTSQueue,
-    processTTSQueue,
-    ttsQueue,
-    isPlaying
+    addToTTSQueue
 };
