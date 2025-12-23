@@ -1,4 +1,4 @@
-// TODO: Figure out how to make shop work with the Twitch API, Implement test and Special Stream settings, Add lifetime gold stat under users, Begin adding Python Codebase for LLM Integration; we're giving the bot a brain :D
+// TODO: Fix profile pictures, Figure out how to make shop work with the Twitch API, Implement test and Special Stream settings, Add lifetime gold stat under users, Begin adding Python Codebase for LLM Integration; we're giving the bot a brain :D
 
 // STREAM-RELATED SETTINGS //
 // Change these by hand to edit the interval of events
@@ -35,64 +35,16 @@ const listener = new EventSubWsListener({ apiClient });
 // Importing other useful commands
 const { dailyGold, goldRank, goldTop, wallet, distributeGold } = require('./redeems.js');
 const { purchaseItem, shopDescriptionObject } = require('./shop.js');
-const { goldSound, disconnectOBS, purchaseSound, addToAlertQueue } = require('./obs_functions.js');
-const { addToTTSQueue } = require('./tts_system.js');
+const { goldSound, disconnectOBS, purchaseSound, addToAlertQueue } = require('./services/obsClient.js');
+const { addToTTSQueue } = require('./services/ttsService.js');
+const { getProfilePic } = require('./services/twitchUsers.js');
 const { betterRandom } = require('./testing.js'); // Hidden module, contains improved random function among other functions to be tested
 
 // Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
 
 // Commands that don't depend on messages
-const asyncCommandLib = {
-    socials: {
-        response: "Wanna know what melon will do next? Stay updated with melon's social media accounts! Bluesky: https://bsky.app/profile/tired-melon.bsky.social YouTube: https://www.youtube.com/@tiredMelonYT Instagram: https://www.instagram.com/melon.is.tired/",
-    },
-    discord: {
-        response: "Wanna communicate with the hoard? Join the discord for updates and community events! https://discord.gg/53rtntWnzw",
-    },
-    follow: {
-        response: "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!",
-    },
-    lurk: {
-        response: (user) => `${user} sinks into the abyss of treasure. Thanks for the lurk!`,
-    },
-    lurking: {
-        response: (user) => `${user} sinks into the abyss of treasure. Thanks for the lurk!`,
-    },
-    ads: {
-        response: "Going on an ad break! We have to run 3 minutes of ads every hour, so feel free to use the time to do some self-care! Friendly reminder: Subscribers don't see ads! It's not required by any means, but always appreciated!",
-    },
-    goldtop: {
-        response: () => goldTop(),
-    },
-    rank: {
-        response: (user) => goldRank(user),
-    },
-    gold: {
-        response: (user) => wallet(user),
-    },
-    goldinfo: {
-        response: () => `Gold is a currency that you can earn by participating in the chat and redeeming daily gold. You can use it to buy items in the shop! To view your current gold, use the command !gold.`
-    },
-    shop: {
-        response: shopDescriptionObject,
-    },
-    buy: {
-        response: (user) => purchaseItem(user),
-    },
-    roll: {
-        response: (user) => {
-            let roll = betterRandom(20, 1);
-            console.log(roll);
-
-            return roll == 20 
-            ? `${user} rolls a natural 20! Fortune smiles upon you!`
-            : roll == 1
-            ? `${user} rolls a natural 1. Ouch...`
-            : `${user} rolls a ${roll}!`
-        }
-    }
-}
+const commands = require('./commands.js');
 
 // Array of commands with authority reqs
 // Less for utility and more for reference
@@ -190,22 +142,25 @@ setInterval(() => {
     }, (betterRandom(4500000, 2700000) / (isSpecialStream ? 2 : 1))); // Every hour +/- somewhere between 0-15 minutes
 
 // Listening for messages in chat
-client.on('message', (channel, tags, message, self) => {
+client.on('message', async (channel, tags, message, self) => {
     if (self) return;
+
+    let profilePicUrl = await getProfilePic(apiClient, tags['user-id'])
 
     let messageData = {
         type: 'chat',
         username: tags['display-name'] || tags['username'],
         title: tags.badges?.vip ? 'VIP' : '',
-        profilePic: undefined,
+        profilePic: profilePicUrl,
         message: message
     }
+    
     try{
         broadcast(messageData);
     } catch(e){
         console.error('Error with Broadcasting: ', e);
     }
-    console.log(`code run for broadcast. Data: ${messageData}`);
+    console.log(`code run for broadcast. Data: ${JSON.stringify(messageData)}`);
 
     // Internal logic for raining gold event
     if (isRaining) {
@@ -219,7 +174,8 @@ client.on('message', (channel, tags, message, self) => {
     
 
     // Silly chat response commands
-
+    
+    const friendWaves = ['trenti8wave', 'gavins8wave', 'tiredm21wave'];
     const friendLurks = ['daitan2KodiLurk', 'gavins8lurk'];
     
     if (message.toLowerCase().includes('o7')) {
@@ -234,11 +190,7 @@ client.on('message', (channel, tags, message, self) => {
         client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`)
     }
 
-    if (message.toLowerCase() === 'tiredm21Wave') {
-        client.say(channel, 'tiredm21Wave');
-    }
-
-    if (message.toLowerCase() === 'trenti8wave') {
+    if (friendWaves.includes(message.toLowerCase())) {
         client.say(channel, 'tiredm21Wave');
     }
 
@@ -277,7 +229,7 @@ client.on('message', (channel, tags, message, self) => {
         console.log(`[DEBUG] Processing command: ${command}`);
         console.log(`[DEBUG] Command type (should be string): ${typeof command}`);
 
-        const {response} = asyncCommandLib[command] || {};
+        const {response} = commands[command] || {};
 
         // Authority check
 
@@ -382,6 +334,10 @@ client.on('message', (channel, tags, message, self) => {
     }
 });
 
+// Gift sub variables outside the scope of an async
+let amount = 1;
+let gifter = ''
+
 async function start() {
 
   await listener.start();
@@ -429,7 +385,8 @@ async function start() {
     // Follow
     listener.onChannelFollow(userId, userId, event => {
         const follower = event.userDisplayName;
-        
+        console.log("[DEBUG] New Follower!");
+
         addToAlertQueue(relevantUser1 = follower, relevantUser2 = undefined, num1 = amount, num2 = undefined, alertType = 'follow');
     })
 
@@ -437,14 +394,13 @@ async function start() {
     listener.onChannelRaidTo(userId, event => {
         const raiderName = event.raidingBroadcasterDisplayName;
         const raidSize = event.viewers;
+        console.log("[DEBUG] Raided!");
 
         addToAlertQueue(relevantUser1 = raiderName, relevantUser2 = undefined, num1 = raidSize, num2 = undefined, alertType = 'raid');
     }); 
 
 
     // Gift Sub Flags
-    let amount = 1;
-    let gifter = ''
     listener.onChannelSubscriptionGift(userId, event => {
         amount = event.amount;
         gifter = event.isAnonymous ? 'Anon' : event.gifterDisplayName;
@@ -453,8 +409,12 @@ async function start() {
     // Subscription
     listener.onChannelSubscription(userId, event => {
         const subscriber = event.userDisplayName;
+        console.log("[DEBUG] Sub received!");
+
         if (event.isGift) {
             addToAlertQueue(relevantUser1 = gifter, relevantUser2 = undefined, num1 = amount, num2 = undefined, alertType = 'gift');
+            console.log("Current Gifter: ", gifter);
+
             return;
         } else {
             addToAlertQueue(relevantUser1 = subscriber, relevantUser2 = undefined, num1 = undefined, num2 = undefined, alertType = 'sub');
@@ -466,6 +426,7 @@ async function start() {
     listener.onChannelCheer(userId, event => {
         const gifter = event.userDisplayName;
         const numBits = event.bits;
+        console.log("[DEBUG] Bits received!");
 
         addToAlertQueue(relevantUser1 = gifter, relevantUser2 = undefined, num1 = numBits, num2 = undefined, alertType = 'bits');
     });

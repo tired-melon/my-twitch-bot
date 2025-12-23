@@ -1,7 +1,7 @@
 // This holds the shop functionality for the Twitch bot, including item management, descriptions, and gold management.
 const fs = require('fs'); 
 const FILE_PATH = './daily_log.json';
-const { purchaseSound } = require('./obs_functions.js');
+const { purchaseSound } = require('./services/obsClient.js');
 
 
 /* THE SHOP! CHATTERS CAN BUY ITEMS AND SPECIAL COMMANDS USING DAILY GOLD. THIS IS A WORK IN PROGRESS.

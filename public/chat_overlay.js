@@ -11,7 +11,7 @@ ws.addEventListener('message', event => {
 let messageQueue = [];
 let animating = false;
 let lastMessageTime = 0;
-let MAX_MESSAGES = 8
+let MAX_MESSAGES = 6
 
 function addChatMessage({ username, title, profilePic, message }) {
 

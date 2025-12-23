@@ -4,7 +4,7 @@
 * It houses TTS voice banks, TTS helper functions, and other TTS-related code.
 */
 
-const { ttsRead } = require('./obs_functions.js')
+const { ttsRead } = require('./obsClient.js')
 
 const ttsQueue = []; // Queue for TTS audio files
 let isPlaying = false; // Flag to check if TTS is currently playing
