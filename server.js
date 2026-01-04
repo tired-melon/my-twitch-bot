@@ -1,13 +1,15 @@
-// TODO: Fix profile pictures, Figure out how to make shop work with the Twitch API, Implement test and Special Stream settings, Add lifetime gold stat under users, Begin adding Python Codebase for LLM Integration; we're giving the bot a brain :D
+// TO FIX: Tokens send as an entire string rather than individual elements, will use twurple's parseTwitchMessage (or parseChatMessage idk).
+
 
 // STREAM-RELATED SETTINGS //
 // Change these by hand to edit the interval of events
-let isSpecialStream = false; // Set to true if this is a special stream, like a charity stream, event, or a subathon
+let isSpecialStream = true; // Set to true if this is a special stream, like a charity stream, event, or a subathon
 let isTesting = false; // Set to true if you are testing the bot, this will change some functionalities
 
 const { StaticAuthProvider } = require('@twurple/auth');
 const { ApiClient } = require('@twurple/api');
 const { EventSubWsListener } = require('@twurple/eventsub-ws');
+const { ChatClient, parseTwitchMessage } = require('@twurple/chat');
 const gTTS = require('gtts');
 const express = require('express');
 const WebSocket = require('ws');
@@ -33,6 +35,7 @@ const apiClient = new ApiClient({ authProvider });
 const listener = new EventSubWsListener({ apiClient });
 
 // Importing other useful commands
+const { buildChatTokens, convertTmiEmotes } = require('./services/chatTokens.js');
 const { dailyGold, goldRank, goldTop, wallet, distributeGold } = require('./redeems.js');
 const { purchaseItem, shopDescriptionObject } = require('./shop.js');
 const { goldSound, disconnectOBS, purchaseSound, addToAlertQueue } = require('./services/obsClient.js');
@@ -65,9 +68,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Broadcast helper function
 function broadcast(data) {
     const json = JSON.stringify(data);
-    wss.clients.forEach(c => {
-        if (c.readyState === WebSocket.OPEN) {
-            c.send(json);
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(json);
         }
     });
 }
@@ -75,14 +78,16 @@ function broadcast(data) {
 // === TEST CHAT SYSTEM === //
 if (isTesting) {
     setInterval(() => {
+        let testTokens = 'This is a test message!'
+
         broadcast({
             type: 'chat',
             username: 'TestUser',
             title: 'Subscriber',
             profilePic: 'https://picsum.photos/200/300',
-            message: 'This is a test chat bubble!'
+            testTokens
         });
-        console.log('Message sent on test server')
+        console.log('Message sent to server: ', testTokens);
     }, 3000);
 }
 server.listen(3000, () => {console.log('Overlay server running on localhost')});
@@ -145,20 +150,22 @@ setInterval(() => {
 client.on('message', async (channel, tags, message, self) => {
     if (self) return;
 
-    let profilePicUrl = await getProfilePic(apiClient, tags['user-id'])
+    let profilePicUrl = await getProfilePic(apiClient, tags['user-id']);
+
+    const tokens = message // TODO: Tokenize message later
 
     let messageData = {
         type: 'chat',
         username: tags['display-name'] || tags['username'],
         title: tags.badges?.vip ? 'VIP' : '',
         profilePic: profilePicUrl,
-        message: message
-    }
+        tokens: tokens
+    };
     
     try{
         broadcast(messageData);
     } catch(e){
-        console.error('Error with Broadcasting: ', e);
+        console.error('Error with Broadcasting Message Data: ', e);
     }
     console.log(`code run for broadcast. Data: ${JSON.stringify(messageData)}`);
 

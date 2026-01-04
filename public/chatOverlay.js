@@ -1,19 +1,22 @@
 const ws = new WebSocket(`ws://${window.location.host}`);
 
-ws.addEventListener('message', event => {
-    const data = JSON.parse(event.data);
+ws.onopen = () => console.log('[WS CONNECTED]');
 
+ws.onmessage = event => {
+    const data = JSON.parse(event.data);
+    console.log('[DATA RECEIVED]', data);
     if (data.type === 'chat') {
         addChatMessage(data);
+        console.log('[TYPE]', data.type);
     }
-});
+};
 
 let messageQueue = [];
 let animating = false;
 let lastMessageTime = 0;
 let MAX_MESSAGES = 6
 
-function addChatMessage({ username, title, profilePic, message }) {
+function addChatMessage({ username, title, profilePic, tokens }) {
 
     const bubble = document.createElement('div');
     bubble.classList.add('chat-bubble');
@@ -34,8 +37,8 @@ function addChatMessage({ username, title, profilePic, message }) {
     titleElem.textContent = title;
 
     const messageElem = document.createElement('div');
-    messageElem.textContent = message;
-
+    messageElem.classList.add('chat-message');
+    messageElem.textContent = tokens
 
     textContainer.appendChild(nameElem);
     textContainer.appendChild(titleElem);
@@ -46,14 +49,35 @@ function addChatMessage({ username, title, profilePic, message }) {
     bubble.style.opacity = '0';
     bubble.style.transform = 'translateY(20px)';
 
-    messageQueue.push(bubble)
+    messageQueue.push(bubble);
     if (!animating) processMessageQueue();
 
-    // Auto-remove after 20 seconds
+    // Auto-remove after 30 seconds
     setTimeout(() => fadeOutAndRemove(bubble), 30000);
-
     enforceMaxMessages();
 }
+
+function renderTokens(container, tokens) {
+    
+    if (!Array.isArray(tokens)) {
+        console.warn('[renderTokens] tokens missing:', tokens);
+        return;
+    }
+    
+    tokens.forEach(token => {
+        if (token.type === 'text') {
+            container.appendChild(document.createTextNode(token.content));
+        }
+
+        if (token.type === 'emote') {
+            const img = document.createElement('img');
+            img.src = token.url;
+            img.classList.add('chat-emote');
+            container.appendChild(img);
+        }
+    });
+}
+
 
 function processMessageQueue() {
     if (messageQueue.length === 0) {
