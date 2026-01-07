@@ -61,7 +61,7 @@ function goldRank(username) {
 }
 
 function wallet(username) {
-    console.log(`[REDEEM] Wallet checked by ${username}`);
+    console.log(`[COMMAND] Wallet checked by ${username}`);
     let data = fs.readFileSync(FILE_PATH, 'utf-8');
     let jsonData = JSON.parse(data);
     let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
@@ -75,7 +75,7 @@ function wallet(username) {
 }
 
 function distributeGold(users = []) {
-    // This is a generic function to distribute gold to an array of users
+    // Generic function to distribute gold to an array of users
     console.log("Distributing gold to users");
     try {
         let data = fs.readFileSync(FILE_PATH, 'utf-8');
@@ -85,11 +85,10 @@ function distributeGold(users = []) {
             let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
             // Define random amount of gold between 1 and 3 to give participants
             let goldGain = Math.floor(betterRandom(3, 1));
-            if (user) {
-                
-                // Update user's gold and redeems
+            
+            if (user) { // Update user's gold and redeems
                 user.redeems++;
-                user.wallet += goldGain // Give 1 gold for participating in the rain
+                user.wallet += goldGain // Give gold for participating in the rain
                 console.log(`[SUCCESS] Distributed ${goldGain} gold to ${username}`);
             } else {
                 jsonData.push({ name: username, redeems:  1, wallet: goldGain });

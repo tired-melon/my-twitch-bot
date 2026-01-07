@@ -1,3 +1,5 @@
+// TODO: Refactor OBS scene edit functions to have a single, modular call
+
 require('dotenv').config();
 const OBSWebSocket = require('obs-websocket-js').default;
 const obs = new OBSWebSocket();

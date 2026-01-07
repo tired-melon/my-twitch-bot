@@ -58,24 +58,22 @@ function shopDescription() {
     message4: shopInventory.slice(3).map(item => `🪙 ${item.name}: ${item.cost} gold - ${item.description}`).join(''),
     message5: 'To view your current gold, use the command !gold. To purchase an item, use the command !buy <item name>. For example: !buy VIP'
     };
-}
+};
 
 const shopDescriptionObject = shopDescription();
 
 
-function vipCheck(username) {
-    // This function will check if the user is a VIP as well as check available VIP slots and return a boolean.
-    // For now, it just returns false.
-    return false;
-}
+function vipCheck(tags) {
+    tags.badges?.vip ? true : false
+};
 
-function purchaseItem(username, args) {
+function purchaseItem(tags, args) {
 
     const query = args.slice(1).join(' ');
 
     let data = fs.readFileSync(FILE_PATH, 'utf-8');
     let jsonData = JSON.parse(data);
-    let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
+    let user = jsonData.find(chatter => chatter.name.toLowerCase() === tags.username.toLowerCase());
 
     for (let item of shopInventory) {
 
@@ -83,26 +81,27 @@ function purchaseItem(username, args) {
             continue;
         }
 
-        if (!user || user.wallet < item.cost) { 
+        if (!user || user.wallet < item.cost) {
             return `You don't have enough gold, ${username}! Have you redeemed your daily gold?`;
         }
 
         if (query.toLowerCase() === item.name.toLowerCase() && user.wallet > item.cost){
-            if (item.name.toLowerCase() === `vip` && vipCheck(username)) {  
+            if (item.name.toLowerCase() === `vip` && vipCheck(username)) {
                 return `You are already a VIP, ${username}!`
             }
             purchaseSound();
             user.wallet -= item.cost;
             console.log(`[SUCCESS] ${item.name} purchased by ${username}!`);
-            return item.response;
         }
-        // Note to self, add stream alert that shows that the user purchased an item
 
+        // Note to self, add stream visual for when the user purchases an item
         fs.writeFileSync(FILE_PATH, JSON.stringify(jsonData, null, 4));
+        return item.response;
+
     };
     console.log(`[DEBUG] Item not found. Message: ${args}`);
     return `Item not found! Remember, the syntax is "!buy [item]" such as "!buy Cursed Item"`;
-}
+};
 
 module.exports = {
     shopDescriptionObject,

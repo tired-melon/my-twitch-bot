@@ -1,12 +1,13 @@
 // TO FIX: 
 // - Tokens send as an entire string rather than individual elements, will use twurple's parseTwitchMessage (or parseChatMessage idk).
 // - Clean up server.js to find what needs to be moved where. I won't let this go public until it doesn't look like a mess.
+// - Add inventory/purchase history to user data
 
 
-// STREAM-RELATED SETTINGS //
-// Change these by hand to edit the interval of events
-let isSpecialStream = true; // Set to true if this is a special stream, like a charity stream, event, or a subathon
-let isTesting = false; // Set to true if you are testing the bot, this will change some functionalities
+// ----------------- STREAM-RELATED SETTINGS ----------------- //
+
+let isSpecialStream = true; // Charity, subathon, debut, etc
+let isTesting = false; // Run test function (@ bottom of file)
 
 // ---------------------- .env VARIABLES ----------------------- //
 
@@ -75,16 +76,17 @@ const client = new tmi.Client({
 
 // Serve overlay HTML/CSS/JS
 app.use(express.static(path.join(__dirname, 'public')));
-
 server.listen(3000, () => {console.log('Overlay server running on localhost')});
 
 client.connect();
-// Running timed follow message
+
+// Timed follow message
 setInterval(() => {client.say(`#${streamerName}`, 
     commands.follow.response)}, 900000);
 
-// ==========FLAGS AND QUEUES========== //   
-// Beginning of raining gold event implementation
+// ---------- FLAGS AND GLOBALS ---------- //   
+
+// Beginning of raining gold event implementation //
 let isRaining = false; // initial state for raining gold
 let rainCatchers = []; // Array to hold users who catch gold during the event
 
@@ -113,9 +115,16 @@ setInterval(() => {
     }, 60000); // Raining gold lasts for 60 seconds
     }, (betterRandom(4500000, 2700000) / (isSpecialStream ? 2 : 1))); // Every hour +/- somewhere between 0-15 minutes
 
-// Listening for messages in chat
+// -------------------- TMI CHAT HANDLER -------------------- //
+
 client.on('message', async (channel, tags, message, self) => {
+    
+    // === MESSAGE IGNORES === //
+
     if (self) return;
+    if (message.includes('!pokecatch')) return;
+
+    // === OBS CHAT OVERLAY INTERACTIONS === //
 
     let profilePicUrl = await getProfilePic(apiClient, tags['user-id']);
 
@@ -126,7 +135,7 @@ client.on('message', async (channel, tags, message, self) => {
         username: tags['display-name'] || tags['username'],
         title: tags.badges?.vip ? 'VIP' : '',
         profilePic: profilePicUrl,
-        tokens: tokens
+        tokens
     };
     
     try{
@@ -136,46 +145,34 @@ client.on('message', async (channel, tags, message, self) => {
     }
     console.log(`code run for broadcast. Data: ${JSON.stringify(messageData)}`);
 
-    // Internal logic for raining gold event
+    // === GOLD RAIN EVENT LOGIC === //
     if (isRaining) {
         if (message && !rainCatchers.includes(tags.username) && tags.username !== streamerName.toLowerCase()) {
             rainCatchers.push(tags.username);
             console.log(`[RAIN] ${tags.username} caught some gold!`);
         }
     }
-    
-    if (message.includes('!pokecatch')) return; // Ignore pokecatch messages, moved to after the raining gold event logic
-    
 
-    // Silly chat response commands
+    // === MISC FUN CHAT RESPONSES === //
+
+    // Quick TODO for later: anonymize emotes for modularity and ease of editing
+    // Also add the damn ffxiv copypasta to that file. clean code > funny code
     
     const friendWaves = ['trenti8wave', 'gavins8wave', 'tiredm21wave'];
     const friendLurks = ['daitan2KodiLurk', 'gavins8lurk'];
     
-    if (message.toLowerCase().includes('o7')) {
-        client.say(channel, 'o7')
-    }
+    // Salute back
+    if (message.toLowerCase().includes('o7')) client.say(channel, 'o7');
 
-    if (message.toLowerCase().includes('o/')) {
-        client.say(channel, 'tiredm21Wave');
-    }
+    // Wave back
+    if (message.toLowerCase().includes('o/') || friendWaves.includes(message.toLowerCase())) client.say(channel, 'tiredm21Wave');
 
-    if (friendLurks.includes(message.toLowerCase())) {
-        client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`)
-    }
+    // Respond to friends lurking w/ emote
+    if (friendLurks.includes(message.toLowerCase())) client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`);
 
-    if (friendWaves.includes(message.toLowerCase())) {
-        client.say(channel, 'tiredm21Wave');
-    }
+    if (message.toLowerCase().includes('ffxiv', 'ff14', 'final fantasy 14')) client.say(channel, 'The critically acclaimed MMORPG Final Fantasy XIV? With an expanded free trial which you can play through the entirety of A Realm Reborn and the award-winning Heavensward and Stormblood expansions up to level 70 for free with no restrictions on playtime?');
 
-    if (message.toLowerCase().includes("ffxiv") ||
-        message.toLowerCase().includes("ff14") ||
-        message.toLowerCase().includes("final fantasy 14")) {
-        client.say(channel, 
-            'The critically acclaimed MMORPG Final Fantasy XIV? With an expanded free trial which you can play through the entirety of A Realm Reborn and the award-winning Heavensward and Stormblood expansions up to level 70 for free with no restrictions on playtime?')
-    }
-
-    // 'Goodnight' message command
+    // 'Goodnight' message command to turn off bot from chat
     if (message.toLowerCase().includes(`goodnight ${username}`) &&
         tags.username === streamerName.toLowerCase()) {
             client.say(channel, `Goodnight! tiredm21Wave`);
@@ -185,7 +182,7 @@ client.on('message', async (channel, tags, message, self) => {
             process.exit(0);
     }
 
-    // Logic for proper ! commands
+    // === COMMAND LOGIC === //
 
     const matches = message.match(regexpCommand);
 
@@ -195,7 +192,7 @@ client.on('message', async (channel, tags, message, self) => {
 
     for (const match of matches) {
         
-        // ---------- Detecting matches ---------- //
+        // Detecting matches //
         if (!match) continue;
         const args = message.split(' ');
         const command = match.toLowerCase().slice(1);
@@ -205,8 +202,7 @@ client.on('message', async (channel, tags, message, self) => {
 
         const {response} = commands[command] || {};
 
-        // ---------- Authority check ---------- //
-
+        // Authority check //
         if (tags.mod || tags.username === streamerName.toLowerCase()) {
             console.log(`[DEBUG] User with auth in chat. Command: ${command}`);
 
@@ -252,12 +248,12 @@ client.on('message', async (channel, tags, message, self) => {
                 return;
             }
         }
-        // Rest of commands
 
+        // Rest of commands
         if (typeof response === 'function') {
             if (command === 'buy') { // !buy is a special case
                 console.log(`[DEBUG] ${tags.username} is attempting to buy ${args.slice(1).join(' ')}`)
-                client.say(channel, `${purchaseItem(tags.username, args)}`);
+                client.say(channel, `${purchaseItem(tags, args)}`);
                 return;
             } else {
                 console.log(`[DEBUG] Sending response (function)`);
@@ -286,10 +282,6 @@ client.on('message', async (channel, tags, message, self) => {
         }
     }
 });
-
-// Gift sub variables outside the scope of an async
-let amount = 1;
-let gifter = ''
 
 async function start() {
 
@@ -340,7 +332,7 @@ async function start() {
         const follower = event.userDisplayName;
         console.log("[DEBUG] New Follower!");
 
-        addToAlertQueue(relevantUser1 = follower, relevantUser2 = undefined, num1 = amount, num2 = undefined, alertType = 'follow');
+        addToAlertQueue(relevantUser1 = follower, relevantUser2 = undefined, num1 = undefined, num2 = undefined, alertType = 'follow');
     });
 
     // Raid
@@ -353,35 +345,34 @@ async function start() {
     }); 
 
 
-    // Gift Sub Flags
+    // Gift Sub
     listener.onChannelSubscriptionGift(userId, event => {
-        amount = event.amount;
-        gifter = event.isAnonymous ? 'Anon' : event.gifterDisplayName;
+        const subAmount = event.amount;
+        const subGifter = event.isAnonymous ? 'Anon' : event.gifterDisplayName;
+        console.log("Current Gifter: ", subGifter);
+
+        addToAlertQueue(relevantUser1 = subGifter, relevantUser2 = undefined, num1 = subAmount, num2 = undefined, alertType = 'gift');
     });
 
     // Subscription
     listener.onChannelSubscription(userId, event => {
+        if (event.isGift) { // Code would've just run
+            return;
+        }
+        
         const subscriber = event.userDisplayName;
         console.log("[DEBUG] Sub received!");
 
-        if (event.isGift) {
-            addToAlertQueue(relevantUser1 = gifter, relevantUser2 = undefined, num1 = amount, num2 = undefined, alertType = 'gift');
-            console.log("Current Gifter: ", gifter);
-
-            return;
-        } else {
-            addToAlertQueue(relevantUser1 = subscriber, relevantUser2 = undefined, num1 = undefined, num2 = undefined, alertType = 'sub');
-        }
-
+        addToAlertQueue(relevantUser1 = subscriber, relevantUser2 = undefined, num1 = undefined, num2 = undefined, alertType = 'sub');
     });
 
     // Bits
     listener.onChannelCheer(userId, event => {
-        const gifter = event.userDisplayName;
+        const bitGifter = event.userDisplayName;
         const numBits = event.bits;
         console.log("[DEBUG] Bits received!");
 
-        addToAlertQueue(relevantUser1 = gifter, relevantUser2 = undefined, num1 = numBits, num2 = undefined, alertType = 'bits');
+        addToAlertQueue(relevantUser1 = bitGifter, relevantUser2 = undefined, num1 = numBits, num2 = undefined, alertType = 'bits');
     });
 
     console.log('[SUCCESS] EventSub listener started successfully!');
@@ -393,12 +384,13 @@ start().catch(console.error);
 async function testFunctions() {
 
     // === TEST REPEAT MESSAGE === //
+
     setInterval(() => {client.say(`#${streamerName}`, 
         `${streamerName} is in testing mode! Take cover!`)}, 10000);
     await new Promise(r => setTimeout(r, 10000)); // Delay to connect to websockets + send message
     
     // === MESSAGE OVERLAY TEST === //
-    
+
     setInterval(() => {
         let testTokens = 'This is a test message!'
 
@@ -413,6 +405,7 @@ async function testFunctions() {
     }, 3000);
 
     // === RAIN EVENT TEST FUNCTION === //
+
     isRaining = true;
     client.say(`#${streamerName}`, "🪙 It's raining gold! Send a message in chat to catch some! 🪙");
     setTimeout(() => {
@@ -430,6 +423,7 @@ async function testFunctions() {
     await new Promise(r => setTimeout(r, 5000)); // 5s delay for audio offset
 
     // === ALERT TEST FUNCTIONS === //
+
     addToAlertQueue("testyman", undefined, 42, undefined, 'gift');
     addToAlertQueue("yeahboiii", undefined, 12, undefined, 'raid');
     addToAlertQueue("im a sub", undefined, undefined, undefined, 'sub');
