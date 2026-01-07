@@ -1,10 +1,24 @@
-// TO FIX: Tokens send as an entire string rather than individual elements, will use twurple's parseTwitchMessage (or parseChatMessage idk).
+// TO FIX: 
+// - Tokens send as an entire string rather than individual elements, will use twurple's parseTwitchMessage (or parseChatMessage idk).
+// - Clean up server.js to find what needs to be moved where. I won't let this go public until it doesn't look like a mess.
 
 
 // STREAM-RELATED SETTINGS //
 // Change these by hand to edit the interval of events
 let isSpecialStream = true; // Set to true if this is a special stream, like a charity stream, event, or a subathon
 let isTesting = false; // Set to true if you are testing the bot, this will change some functionalities
+
+// ---------------------- .env VARIABLES ----------------------- //
+
+require('dotenv').config();
+const accessToken = process.env.BOT_OAUTH_TOKEN;
+const username = process.env.BOT_USERNAME; 
+const streamerName = process.env.CHANNEL;
+const clientId = process.env.STREAMER_CLIENT_ID;
+const streamerAccessToken = process.env.STREAMER_OAUTH_TOKEN;
+const userId = process.env.STREAMER_USER_ID;
+
+// ----------------------- LOAD DEPENDENCIES ------------------------//
 
 const { StaticAuthProvider } = require('@twurple/auth');
 const { ApiClient } = require('@twurple/api');
@@ -15,43 +29,40 @@ const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
 const path = require('path');
-
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
-require('dotenv').config();
-
 const tmi = require('tmi.js');
-
-const accessToken = process.env.BOT_OAUTH_TOKEN;
-const username = process.env.BOT_USERNAME; 
-const streamerName = process.env.CHANNEL;
-const clientId = process.env.STREAMER_CLIENT_ID;
-const streamerAccessToken = process.env.STREAMER_OAUTH_TOKEN;
-const userId = process.env.STREAMER_USER_ID;
-
-const authProvider = new StaticAuthProvider(clientId, streamerAccessToken);
+const authProvider = new StaticAuthProvider(clientId,
+     streamerAccessToken);
 const apiClient = new ApiClient({ authProvider });
 const listener = new EventSubWsListener({ apiClient });
 
-// Importing other useful commands
-const { buildChatTokens, convertTmiEmotes } = require('./services/chatTokens.js');
-const { dailyGold, goldRank, goldTop, wallet, distributeGold } = require('./redeems.js');
-const { purchaseItem, shopDescriptionObject } = require('./shop.js');
-const { goldSound, disconnectOBS, purchaseSound, addToAlertQueue } = require('./services/obsClient.js');
+// --------------------  HELPER FUNCTIONS -------------------- // 
+
+const { dailyGold, distributeGold } = require('./redeems.js');
+const { purchaseItem } = require('./shop.js');
+const { goldSound, disconnectOBS, purchaseSound,
+     addToAlertQueue } = require('./services/obsClient.js');
 const { addToTTSQueue } = require('./services/ttsService.js');
 const { getProfilePic } = require('./services/twitchUsers.js');
-const { betterRandom } = require('./testing.js'); // Hidden module, contains improved random function among other functions to be tested
+const { betterRandom } = require('./betterRandom.js'); 
+const commands = require('./commands.js');
 
 // Command Regex
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
 
-// Commands that don't depend on messages
-const commands = require('./commands.js');
+// Broadcast helper function
+function broadcast(data) {
+    const json = JSON.stringify(data);
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(json);
+        }
+    });
+}
 
-// Array of commands with authority reqs
-// Less for utility and more for reference
-// specialCommands = ['so', 'ads', 'raid'];
+// ---------- INITIALIZE CLIENT + CHAT OVERLAY ---------- //
 
 const client = new tmi.Client({
 	options: { debug: true },
@@ -65,62 +76,18 @@ const client = new tmi.Client({
 // Serve overlay HTML/CSS/JS
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Broadcast helper function
-function broadcast(data) {
-    const json = JSON.stringify(data);
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(json);
-        }
-    });
-}
-
-// === TEST CHAT SYSTEM === //
-if (isTesting) {
-    setInterval(() => {
-        let testTokens = 'This is a test message!'
-
-        broadcast({
-            type: 'chat',
-            username: 'TestUser',
-            title: 'Subscriber',
-            profilePic: 'https://picsum.photos/200/300',
-            testTokens
-        });
-        console.log('Message sent to server: ', testTokens);
-    }, 3000);
-}
 server.listen(3000, () => {console.log('Overlay server running on localhost')});
 
 client.connect();
 // Running timed follow message
-setInterval(() => {client.say(`#${streamerName}`, "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!")}, 900000);
+setInterval(() => {client.say(`#${streamerName}`, 
+    commands.follow.response)}, 900000);
 
 // ==========FLAGS AND QUEUES========== //   
 // Beginning of raining gold event implementation
 let isRaining = false; // initial state for raining gold
 let rainCatchers = []; // Array to hold users who catch gold during the event
-// TEST EVENT: Raining Gold //
-// Uncomment to test the raining gold event //
 
-/*
-isRaining = true;
-client.say(`#${streamerName}`, "🪙 It's raining gold! Send a message in chat to catch some! 🪙");
-setTimeout(() => {
-    if (rainCatchers.length > 0) {
-        distributeGold(rainCatchers);
-        client.say(`#${streamerName}`, `Gold has been distributed to: ${rainCatchers.join(', ')}!`);
-        console.log(`[DEBUG] Distributed gold to ${rainCatchers.length} users.`);
-    } else {
-        client.say(`#${streamerName}`, "No one caught any gold this time!");
-        console.log("[DEBUG] No users caught gold.");
-    }
-
-    isRaining = false; // Stop the raining gold event
-    rainCatchers = []; // Reset the catchers for the next event
-}, 30000); // Raining gold lasts for 30 seconds
-
-*/
 setInterval(() => {
     goldSound();
 
@@ -140,8 +107,8 @@ setInterval(() => {
             console.log("[DEBUG] No users caught gold.");
         }
 
-        isRaining = false; // Stop the raining gold event
-        rainCatchers = []; // Reset the catchers for the next event
+        isRaining = false;
+        rainCatchers = [];
         console.log("[DEBUG] Raining gold event ended.");
     }, 60000); // Raining gold lasts for 60 seconds
     }, (betterRandom(4500000, 2700000) / (isSpecialStream ? 2 : 1))); // Every hour +/- somewhere between 0-15 minutes
@@ -228,7 +195,7 @@ client.on('message', async (channel, tags, message, self) => {
 
     for (const match of matches) {
         
-        //Detecting matches
+        // ---------- Detecting matches ---------- //
         if (!match) continue;
         const args = message.split(' ');
         const command = match.toLowerCase().slice(1);
@@ -238,10 +205,16 @@ client.on('message', async (channel, tags, message, self) => {
 
         const {response} = commands[command] || {};
 
-        // Authority check
+        // ---------- Authority check ---------- //
 
         if (tags.mod || tags.username === streamerName.toLowerCase()) {
             console.log(`[DEBUG] User with auth in chat. Command: ${command}`);
+
+            // Generic response mod commands
+            if (command.includes('ads', 'raid')) {
+                client.say(channel, response);
+                return;
+            }
 
             // Shoutout Command
             if (command === 'so') {  
@@ -256,18 +229,6 @@ client.on('message', async (channel, tags, message, self) => {
                 client.say(channel, `Shoutout to ${shoutoutName}! Check out their channel at https://twitch.tv/${shoutoutName}`);
                 console.log(`[DEBUG] Channel is ${channel} of type ${typeof channel} (should be string)`);
                 console.log(`[DEBUG] Sent shoutout for ${shoutoutName}!`);
-                return;
-            }
-
-            // Raid Message
-            if (command === 'raid') {
-                client.say(channel, "tiredm21LETSGO Mimic Raid! tiredm21LETSGO Mimic Raid! tiredm21LETSGO");
-                return
-            }
-
-            // Ads Command
-            if (command === 'ads') {
-                client.say(channel, response);
                 return;
             }
 
@@ -289,12 +250,12 @@ client.on('message', async (channel, tags, message, self) => {
                 });
                 
                 return;
-            };
+            }
         }
         // Rest of commands
 
         if (typeof response === 'function') {
-            if (command === 'buy') { // Checking for !buy
+            if (command === 'buy') { // !buy is a special case
                 console.log(`[DEBUG] ${tags.username} is attempting to buy ${args.slice(1).join(' ')}`)
                 client.say(channel, `${purchaseItem(tags.username, args)}`);
                 return;
@@ -308,31 +269,16 @@ client.on('message', async (channel, tags, message, self) => {
         } else if (typeof response === 'object') {
             console.log(`[DEBUG] Sending response (object)`);
             try{
-                client.say(channel, response.message1);
-                console.log(`[DEBUG] Sent message1: ${response.message1}`);
-                if (response.message2) {
+                let delay = 2000;
+                for (let m in response) {
                     setTimeout(() => {
-                    client.say(channel, response.message2)
-                    }, 2000);
+                        client.say(channel, response[m])
+                        }, i);
+                    delay += 2000;
                 }
-                if (response.message3) {
-                    setTimeout(() => {
-                    client.say(channel, response.message3)
-                    }, 4000)
-                }
-                if (response.message4) {
-                    setTimeout(() => {
-                    client.say(channel, response.message4)
-                    }, 6000)
-                }
-                if (response.message5) {
-                    setTimeout(() => {
-                    client.say(channel, response.message5)
-                    }, 8000)
-                }
-                
+            
             } catch (err) {
-                console.error('[ERROR] Failed to send object response', err);
+                console.error('[ERROR] Failed to send object response: ', err);
             }
         } else {
             console.log(`[DEBUG] Response not found for command: ${command}`);
@@ -351,7 +297,7 @@ async function start() {
 
     // === CHANNEL REDEEMS === //
     listener.onChannelRedemptionAdd(userId, event => {
-        console.log(`[✅ Redeemed] ${event.userDisplayName} used ${event.rewardTitle}`);
+        console.log(`[Redeemed] ${event.userDisplayName} used ${event.rewardTitle}`);
 
     // Daily Gold
 
@@ -395,7 +341,7 @@ async function start() {
         console.log("[DEBUG] New Follower!");
 
         addToAlertQueue(relevantUser1 = follower, relevantUser2 = undefined, num1 = amount, num2 = undefined, alertType = 'follow');
-    })
+    });
 
     // Raid
     listener.onChannelRaidTo(userId, event => {
@@ -427,7 +373,7 @@ async function start() {
             addToAlertQueue(relevantUser1 = subscriber, relevantUser2 = undefined, num1 = undefined, num2 = undefined, alertType = 'sub');
         }
 
-    })
+    });
 
     // Bits
     listener.onChannelCheer(userId, event => {
@@ -438,24 +384,57 @@ async function start() {
         addToAlertQueue(relevantUser1 = gifter, relevantUser2 = undefined, num1 = numBits, num2 = undefined, alertType = 'bits');
     });
 
-    console.log('✅ EventSub listener started successfully!');
-    console.log('✅ Listening for events...');
-
-
-}
+    console.log('[SUCCESS] EventSub listener started successfully!');
+    console.log('Listening for events...');
+};
 
 start().catch(console.error);
 
-async function alertRollCall() {
-    await new Promise(r => setTimeout(r, 3000));
-    // === THROW ASYNC TEST FUNCTIONS HERE === //
+async function testFunctions() {
+
+    // === TEST REPEAT MESSAGE === //
+    setInterval(() => {client.say(`#${streamerName}`, 
+        `${streamerName} is in testing mode! Take cover!`)}, 10000);
+    await new Promise(r => setTimeout(r, 10000)); // Delay to connect to websockets + send message
+    
+    // === MESSAGE OVERLAY TEST === //
+    
+    setInterval(() => {
+        let testTokens = 'This is a test message!'
+
+        broadcast({
+            type: 'chat',
+            username: 'TestUser',
+            title: 'Subscriber',
+            profilePic: 'https://picsum.photos/200/300',
+            testTokens
+        });
+        console.log('Message sent to server: ', testTokens);
+    }, 3000);
+
+    // === RAIN EVENT TEST FUNCTION === //
+    isRaining = true;
+    client.say(`#${streamerName}`, "🪙 It's raining gold! Send a message in chat to catch some! 🪙");
+    setTimeout(() => {
+        if (rainCatchers.length > 0) {
+            distributeGold(rainCatchers);
+            client.say(`#${streamerName}`, `Gold has been distributed to: ${rainCatchers.join(', ')}!`);
+            console.log(`[DEBUG] Distributed gold to ${rainCatchers.length} users.`);
+        } else {
+            client.say(`#${streamerName}`, "No one caught any gold this time!");
+            console.log("[DEBUG] No users caught gold.");
+        }
+        isRaining = false;
+        rainCatchers = [];
+    }, 30000); // Raining gold lasts for 30 seconds
+    await new Promise(r => setTimeout(r, 5000)); // 5s delay for audio offset
+
+    // === ALERT TEST FUNCTIONS === //
     addToAlertQueue("testyman", undefined, 42, undefined, 'gift');
     addToAlertQueue("yeahboiii", undefined, 12, undefined, 'raid');
     addToAlertQueue("im a sub", undefined, undefined, undefined, 'sub');
     addToAlertQueue("bitpusher", undefined, 69, undefined, 'bits');
     addToAlertQueue("evil larry", undefined, undefined, undefined, 'follow');
-}
+};
 
-if (isTesting) {
-    alertRollCall();
-}
+if (isTesting) testFunctions().catch(console.error)

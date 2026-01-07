@@ -1,6 +1,6 @@
 // Holding all the redeem functions (and the shop) here so I don't have to throw them all in a singular massive function
 const fs = require('fs'); 
-const { betterRandom } = require('./testing');
+const { betterRandom } = require('./betterRandom');
 const FILE_PATH = './daily_log.json';
 
 function dailyGold(username) {

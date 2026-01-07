@@ -1,16 +1,25 @@
 const { goldTop, goldRank, wallet } = require('./redeems');
 const { purchaseItem, shopDescriptionObject } = require('./shop');
-const { betterRandom } = require('./testing');
+const { betterRandom } = require('./betterRandom');
 
 const commands = {
-    socials: {
-        response: "Wanna know what melon will do next? Stay updated with melon's social media accounts! Bluesky: https://bsky.app/profile/tired-melon.bsky.social YouTube: https://www.youtube.com/@tiredMelonYT Instagram: https://www.instagram.com/melon.is.tired/",
-    },
+
+    // Promo chat commands
+    
     discord: {
         response: "Wanna communicate with the hoard? Join the discord for updates and community events! https://discord.gg/53rtntWnzw",
     },
     follow: {
         response: "If you're having a good time, remember to follow and turn on notifications to see when melon goes live!",
+    },
+    socials: {
+        response: "Wanna know what melon will do next? Stay updated with melon's social media accounts! Bluesky: https://bsky.app/profile/tired-melon.bsky.social YouTube: https://www.youtube.com/@tiredMelonYT Instagram: https://www.instagram.com/melon.is.tired/",
+    },
+
+    // Generic chat commands
+
+    ads: {
+        response: "Going on an ad break! We have to run 3 minutes of ads every hour, so feel free to use the time to do some self-care! Friendly reminder: Subscribers don't see ads! It's not required by any means, but always appreciated!",
     },
     lurk: {
         response: (user) => `${user} sinks into the abyss of treasure. Thanks for the lurk!`,
@@ -18,8 +27,17 @@ const commands = {
     lurking: {
         response: (user) => `${user} sinks into the abyss of treasure. Thanks for the lurk!`,
     },
-    ads: {
-        response: "Going on an ad break! We have to run 3 minutes of ads every hour, so feel free to use the time to do some self-care! Friendly reminder: Subscribers don't see ads! It's not required by any means, but always appreciated!",
+    raid: {
+        response: "tiredm21LETSGO Mimic Raid! tiredm21LETSGO Mimic Raid! tiredm21LETSGO",
+    },
+
+    // Shop-related commands
+
+    gold: {
+        response: (user) => wallet(user),
+    },
+    goldinfo: {
+        response: () => `Gold is a currency that you can earn by participating in the chat and redeeming daily gold. You can use it to buy items in the shop! To view your current gold, use the command !gold.`
     },
     goldtop: {
         response: () => goldTop(),
@@ -27,18 +45,12 @@ const commands = {
     rank: {
         response: (user) => goldRank(user),
     },
-    gold: {
-        response: (user) => wallet(user),
-    },
-    goldinfo: {
-        response: () => `Gold is a currency that you can earn by participating in the chat and redeeming daily gold. You can use it to buy items in the shop! To view your current gold, use the command !gold.`
-    },
     shop: {
         response: shopDescriptionObject,
     },
-    buy: {
-        response: (user) => purchaseItem(user),
-    },
+
+    // Miscellaneous fun commands
+
     roll: {
         response: (user) => {
             let roll = betterRandom(20, 1);
