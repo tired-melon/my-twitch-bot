@@ -1,12 +1,12 @@
 // TO FIX: 
 // - Tokens send as an entire string rather than individual elements, will use twurple's parseTwitchMessage (or parseChatMessage idk).
 // - Clean up server.js to find what needs to be moved where. I won't let this go public until it doesn't look like a mess.
-// - Add inventory/purchase history to user data
-
+// - Add visual overlay for redeems & events
+// - Add redeems as valid messages for gold rain
 
 // ----------------- STREAM-RELATED SETTINGS ----------------- //
 
-let isSpecialStream = true; // Charity, subathon, debut, etc
+let isSpecialStream = false; // Charity, subathon, debut, etc.
 let isTesting = false; // Run test function (@ bottom of file)
 
 // ---------------------- .env VARIABLES ----------------------- //
@@ -43,7 +43,7 @@ const listener = new EventSubWsListener({ apiClient });
 
 const { dailyGold, distributeGold } = require('./redeems.js');
 const { purchaseItem } = require('./shop.js');
-const { goldSound, disconnectOBS, purchaseSound,
+const { goldSound, disconnectOBS,
      addToAlertQueue } = require('./services/obsClient.js');
 const { addToTTSQueue } = require('./services/ttsService.js');
 const { getProfilePic } = require('./services/twitchUsers.js');
@@ -54,7 +54,7 @@ const commands = require('./commands.js');
 const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
 
 // Broadcast helper function
-function broadcast(data) {
+function broadcastToOverlay(data) {
     const json = JSON.stringify(data);
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
@@ -80,7 +80,7 @@ server.listen(3000, () => {console.log('Overlay server running on localhost')});
 
 client.connect();
 
-// Timed follow message
+// Timed follow message, every 15m
 setInterval(() => {client.say(`#${streamerName}`, 
     commands.follow.response)}, 900000);
 
@@ -139,7 +139,7 @@ client.on('message', async (channel, tags, message, self) => {
     };
     
     try{
-        broadcast(messageData);
+        broadcastToOverlay(messageData);
     } catch(e){
         console.error('Error with Broadcasting Message Data: ', e);
     }
@@ -285,7 +285,10 @@ client.on('message', async (channel, tags, message, self) => {
 
 async function start() {
 
-  await listener.start();
+    await listener.start();
+
+    console.log('[SUCCESS] EventSub listener started successfully!');
+    console.log('Listening for events...');
 
     // === CHANNEL REDEEMS === //
     listener.onChannelRedemptionAdd(userId, event => {
@@ -295,19 +298,15 @@ async function start() {
 
         if (event.rewardTitle === 'Daily Gold') {
             const newCount = dailyGold(event.userDisplayName);
-            client.say(`#${streamerName}`, `Thank you @${event.userDisplayName} for redeeming your daily gold! You've acquired gold ${newCount[0] ? newCount[0] : 1} times so far and you currently have ${newCount[1] ? newCount[1] : 1} gold in your wallet. Enjoy!`);
+            client.say(`#${streamerName}`, 
+                `Thank you @${event.userDisplayName} for redeeming your daily gold! You've acquired gold ${newCount[0] ? newCount[0] : 1} times so far and you currently have ${newCount[1] ? newCount[1] : 1} gold in your wallet. Enjoy!`
+            );
         }
-
 
     // Hello
 
         if (event.rewardTitle === 'Hello!') {
             client.say(`#${streamerName}`, 'Hello! tiredm21Wave');
-            }
-        if (isTesting && event.userName === streamerName) {
-            // Add whatever you need to test here
-            goldSound();
-            purchaseSound();
         }
     
     // TTS
@@ -319,7 +318,7 @@ async function start() {
             
             gtts.save(fileName, function(err) {
                 if(err) { throw new Error(err); }
-                addToTTSQueue(fileName); // Add the file to the TTS queue
+                addToTTSQueue(fileName);
                 console.log(`[DEBUG] TTS conversion successful! File saved as ${fileName}`);
             });
         }
@@ -343,7 +342,6 @@ async function start() {
 
         addToAlertQueue(relevantUser1 = raiderName, relevantUser2 = undefined, num1 = raidSize, num2 = undefined, alertType = 'raid');
     }); 
-
 
     // Gift Sub
     listener.onChannelSubscriptionGift(userId, event => {
@@ -374,9 +372,6 @@ async function start() {
 
         addToAlertQueue(relevantUser1 = bitGifter, relevantUser2 = undefined, num1 = numBits, num2 = undefined, alertType = 'bits');
     });
-
-    console.log('[SUCCESS] EventSub listener started successfully!');
-    console.log('Listening for events...');
 };
 
 start().catch(console.error);
@@ -394,7 +389,7 @@ async function testFunctions() {
     setInterval(() => {
         let testTokens = 'This is a test message!'
 
-        broadcast({
+        broadcastToOverlay({
             type: 'chat',
             username: 'TestUser',
             title: 'Subscriber',

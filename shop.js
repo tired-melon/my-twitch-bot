@@ -12,16 +12,16 @@ const { purchaseSound } = require('./services/obsClient.js');
 * 
 * D&D items: Cursed dice (2s are 1s), Blessed dice (19s are 20s), Damage boost (roll 1 die tier higher), Damage reduction (roll 1 die tier lower)
 *
-* Doubles as a to-do list for custom features since many of these will not be auntomated.
+* Doubles as a to-do list for custom features since many of these will not be automated.
 *
 */
 
 class Item {
     constructor(name, cost, description, response) {
         this.name = name;
-        this.cost = cost; // All placeholders for now, will be replaced with actual gold values later
+        this.cost = cost; 
         this.description = description;
-        this.response = response; // This will be a function that returns a response based on the user's input
+        this.response = response;
     }
 }
 
@@ -73,7 +73,8 @@ function purchaseItem(tags, args) {
 
     let data = fs.readFileSync(FILE_PATH, 'utf-8');
     let jsonData = JSON.parse(data);
-    let user = jsonData.find(chatter => chatter.name.toLowerCase() === tags.username.toLowerCase());
+    let username = tags.username;
+    let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
 
     for (let item of shopInventory) {
 

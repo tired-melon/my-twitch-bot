@@ -1,5 +1,5 @@
 const { goldTop, goldRank, wallet } = require('./redeems');
-const { purchaseItem, shopDescriptionObject } = require('./shop');
+const { shopDescriptionObject } = require('./shop');
 const { betterRandom } = require('./betterRandom');
 
 const commands = {
