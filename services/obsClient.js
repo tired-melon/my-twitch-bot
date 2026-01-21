@@ -1,5 +1,3 @@
-// TODO: Refactor OBS scene edit functions to have a single, modular call
-
 require('dotenv').config();
 const OBSWebSocket = require('obs-websocket-js').default;
 const obs = new OBSWebSocket();
@@ -36,7 +34,7 @@ function disconnectOBS() {
 
 // === OBS Alert Handler Class === //
 
-class AlertEvent{
+class AlertEvent {
     constructor(event, eventType) {
         this.event = event;
         this.type = eventType;

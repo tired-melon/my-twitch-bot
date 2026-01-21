@@ -34,15 +34,15 @@ const listener = new EventSubWsListener({ apiClient });
 
 // --------------------  HELPER FUNCTIONS -------------------- // 
 
-const { dailyGold, distributeGold } = require('./redeems.js');
-const { purchaseItem } = require('./shop.js');
+const { dailyGold, distributeGold } = require('./utils/redeems.js');
+const { purchaseItem } = require('./utils/shop.js');
 const { goldSound, disconnectOBS,
      addToAlertQueue } = require('./services/obsClient.js');
 const { addToTTSQueue } = require('./services/ttsService.js');
 const { getProfilePic } = require('./services/twitchUserServices.js');
-const { betterRandom } = require('./betterRandom.js'); 
-const { friendLurks, friendWaves } = require('./emotesAndChats.js');
-const { commands, regexpCommand } = require('./commands.js');
+const { betterRandom } = require('./utils/betterRandom.js'); 
+const { friendLurks, friendWaves } = require('./utils/emotesAndChats.js');
+const { commands, regexpCommand } = require('./utils/commands.js');
 
 // Broadcast helper function
 function broadcastToOverlay(data) {
