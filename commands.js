@@ -2,6 +2,11 @@ const { goldTop, goldRank, wallet } = require('./redeems');
 const { shopDescriptionObject } = require('./shop');
 const { betterRandom } = require('./betterRandom');
 
+// Command Regex
+const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
+
+// Custom Command Library
+
 const commands = {
 
     // Promo chat commands
@@ -65,4 +70,4 @@ const commands = {
     }
 };
 
-module.exports = commands;
+module.exports = { commands, regexpCommand };

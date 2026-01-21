@@ -107,7 +107,6 @@ async function ttsRead(file) {
     });
 }
 
-
 // === ALERT QUEUE SYSTEM === //
 
 const alertQueue = [];
@@ -123,7 +122,7 @@ async function processAlertQueue() {
 
     let streamAlert;
 
-    switch (alertType) {    
+    switch (alertType) {
         case 'follow':
             streamAlert = followAlert;
             break;

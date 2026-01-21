@@ -3,7 +3,7 @@
 
 function betterRandom(max, min = 0) {
    
-    if (max % 1 !== 0 || min % 1 !== 0) { // verifying that these are integers
+    if (max % 1 || min % 1) { // verifying that these are integers
         console.log("[ERROR] Either you misused the function or we have a big problem.");
         console.log(`[DEBUG] Min: ${min}. Max: ${max}`);
         return;
@@ -20,9 +20,6 @@ function betterRandom(max, min = 0) {
     const randomFraction = buffer[0] / 0xFFFFFFFF;
     range = max - min + 1;
     randomOutput = Math.floor(randomFraction * range ) + min;
-
-    console.log(`fraction: 1/${buffer[0]} `);
-    console.log('output:', randomOutput);
 
     return randomOutput;
 }

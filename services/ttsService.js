@@ -1,7 +1,8 @@
 // ===== TTS SYSTEM =====
 /*
-* This file contains supplementary functions, classes, and variables for the TTS system.
-* It houses TTS voice banks, TTS helper functions, and other TTS-related code.
+* This file will contain supplementary functions, classes, and variables for the TTS system.
+* It will eventually  house TTS voice banks, TTS helper functions, and other TTS-related code.
+* For now, it just has the queue logic.
 */
 
 const { ttsRead } = require('./obsClient.js')

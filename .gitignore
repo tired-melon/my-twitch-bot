@@ -1,6 +1,5 @@
-node_modules
 .env
-twitch_scopes.json
-tokens.json
 daily_log.json
-testing.js
+node_modules
+tokens.json
+twitch_scopes.json

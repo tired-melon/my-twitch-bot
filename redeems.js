@@ -1,9 +1,42 @@
-// Holding all the redeem functions (and the shop) here so I don't have to throw them all in a singular massive function
+// This file holds all of the redeem functions.
+
 const fs = require('fs'); 
 const { betterRandom } = require('./betterRandom');
 const FILE_PATH = './daily_log.json';
 
+// Currency Functions //
+
+function distributeGold(users = []) { 
+    // Generic function to distribute gold to an array of users
+    console.log("Distributing gold to users");
+    try {
+        let data = fs.readFileSync(FILE_PATH, 'utf-8');
+        let jsonData = JSON.parse(data);
+
+        users.forEach(username => {
+            let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
+            // Define random amount of gold between 1 and 3 to give participants
+            let goldGain = Math.floor(betterRandom(3, 1));
+            
+            if (user) { // Update user's gold and redeems
+                user.redeems++;
+                user.wallet += goldGain // Give gold for participating in the rain
+                console.log(`[SUCCESS] Distributed ${goldGain} gold to ${username}`);
+            } else {
+                jsonData.push({ name: username, redeems:  1, wallet: goldGain });
+                console.log(`[NEW USER] Added ${username} with ${goldGain} gold`);
+            }
+        });
+
+        fs.writeFileSync(FILE_PATH, JSON.stringify(jsonData, null, 4));
+    } catch (err) {
+        console.error(`[ERROR] Could not distribute gold. Manually distribute gold to ${users}`, err);
+    }
+
+}
+
 function dailyGold(username) {
+    // Logic for Daily Gold Redeem
     console.log(`${username} redeemed their daily gold!`);
     try {
         distributeGold([username]); // Distribute gold to the user
@@ -21,6 +54,22 @@ function dailyGold(username) {
         console.error('[ERROR] Could not update redeems', err);
     }
 }
+
+function wallet(username) {
+    console.log(`[COMMAND] Wallet checked by ${username}`);
+    let data = fs.readFileSync(FILE_PATH, 'utf-8');
+    let jsonData = JSON.parse(data);
+    let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
+
+    if (!user) { 
+        return `You have not redeemed your daily gold yet, ${username}! Use the Daily Gold redeem to acquire your first gold!`;
+    }
+     
+    // If the user has no wallet entry, we assume they have 0 gold
+    return `You have ${user.wallet ? user.wallet : 0} gold, ${username}! ${user.wallet ? 'Use it to buy items in the shop!' : 'It smells like broke in here!'}`;
+}
+
+// Leaderboard Functions //
 
 function sortLeaderboard() {
     let data = fs.readFileSync(FILE_PATH, 'utf-8');
@@ -60,48 +109,7 @@ function goldRank(username) {
     return `${username}, you are ranked #${rank} with ${lb[rank-1].redeems} redeems!`;
 }
 
-function wallet(username) {
-    console.log(`[COMMAND] Wallet checked by ${username}`);
-    let data = fs.readFileSync(FILE_PATH, 'utf-8');
-    let jsonData = JSON.parse(data);
-    let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
 
-    if (!user) { 
-        return `You have not redeemed your daily gold yet, ${username}! Use the Daily Gold redeem to acquire your first gold!`;
-    }
-     
-    // If the user has no wallet entry, we assume they have 0 gold
-    return `You have ${user.wallet ? user.wallet : 0} gold, ${username}! ${user.wallet ? 'Use it to buy items in the shop!' : 'It smells like broke in here!'}`;
-}
-
-function distributeGold(users = []) {
-    // Generic function to distribute gold to an array of users
-    console.log("Distributing gold to users");
-    try {
-        let data = fs.readFileSync(FILE_PATH, 'utf-8');
-        let jsonData = JSON.parse(data);
-
-        users.forEach(username => {
-            let user = jsonData.find(chatter => chatter.name.toLowerCase() === username.toLowerCase());
-            // Define random amount of gold between 1 and 3 to give participants
-            let goldGain = Math.floor(betterRandom(3, 1));
-            
-            if (user) { // Update user's gold and redeems
-                user.redeems++;
-                user.wallet += goldGain // Give gold for participating in the rain
-                console.log(`[SUCCESS] Distributed ${goldGain} gold to ${username}`);
-            } else {
-                jsonData.push({ name: username, redeems:  1, wallet: goldGain });
-                console.log(`[NEW USER] Added ${username} with ${goldGain} gold`);
-            }
-        });
-
-        fs.writeFileSync(FILE_PATH, JSON.stringify(jsonData, null, 4));
-    } catch (err) {
-        console.error(`[ERROR] Could not distribute gold. Manually distribute gold to ${users}`, err);
-    }
-
-}
 
 
 module.exports = { dailyGold, goldRank, goldTop, wallet, distributeGold };

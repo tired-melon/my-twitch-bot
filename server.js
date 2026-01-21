@@ -1,9 +1,3 @@
-// TO FIX: 
-// - Tokens send as an entire string rather than individual elements, will use twurple's parseTwitchMessage (or parseChatMessage idk).
-// - Clean up server.js to find what needs to be moved where. I won't let this go public until it doesn't look like a mess.
-// - Add visual overlay for redeems & events
-// - Add redeems as valid messages for gold rain
-
 // ----------------- STREAM-RELATED SETTINGS ----------------- //
 
 let isSpecialStream = false; // Charity, subathon, debut, etc.
@@ -24,7 +18,6 @@ const userId = process.env.STREAMER_USER_ID;
 const { StaticAuthProvider } = require('@twurple/auth');
 const { ApiClient } = require('@twurple/api');
 const { EventSubWsListener } = require('@twurple/eventsub-ws');
-const { ChatClient, parseTwitchMessage } = require('@twurple/chat');
 const gTTS = require('gtts');
 const express = require('express');
 const WebSocket = require('ws');
@@ -46,12 +39,10 @@ const { purchaseItem } = require('./shop.js');
 const { goldSound, disconnectOBS,
      addToAlertQueue } = require('./services/obsClient.js');
 const { addToTTSQueue } = require('./services/ttsService.js');
-const { getProfilePic } = require('./services/twitchUsers.js');
+const { getProfilePic } = require('./services/twitchUserServices.js');
 const { betterRandom } = require('./betterRandom.js'); 
-const commands = require('./commands.js');
-
-// Command Regex
-const regexpCommand = new RegExp(/!([a-zA-Z0-9]+)/g);
+const { friendLurks, friendWaves } = require('./emotesAndChats.js');
+const { commands, regexpCommand } = require('./commands.js');
 
 // Broadcast helper function
 function broadcastToOverlay(data) {
@@ -84,9 +75,10 @@ client.connect();
 setInterval(() => {client.say(`#${streamerName}`, 
     commands.follow.response)}, 900000);
 
-// ---------- FLAGS AND GLOBALS ---------- //   
+// ---------- FLAGS AND GLOBALS ---------- //
 
 // Beginning of raining gold event implementation //
+
 let isRaining = false; // initial state for raining gold
 let rainCatchers = []; // Array to hold users who catch gold during the event
 
@@ -115,21 +107,20 @@ setInterval(() => {
     }, 60000); // Raining gold lasts for 60 seconds
     }, (betterRandom(4500000, 2700000) / (isSpecialStream ? 2 : 1))); // Every hour +/- somewhere between 0-15 minutes
 
+// End of raining gold event implementation //
+
 // -------------------- TMI CHAT HANDLER -------------------- //
 
 client.on('message', async (channel, tags, message, self) => {
     
-    // === MESSAGE IGNORES === //
-
-    if (self) return;
-    if (message.includes('!pokecatch')) return;
-
+    
     // === OBS CHAT OVERLAY INTERACTIONS === //
-
+    
     let profilePicUrl = await getProfilePic(apiClient, tags['user-id']);
-
+    
     const tokens = message // TODO: Tokenize message later
-
+    
+    
     let messageData = {
         type: 'chat',
         username: tags['display-name'] || tags['username'],
@@ -140,11 +131,15 @@ client.on('message', async (channel, tags, message, self) => {
     
     try{
         broadcastToOverlay(messageData);
+        if (isTesting) console.log("code run for broadcast. Data: ", JSON.stringify(messageData));
     } catch(e){
         console.error('Error with Broadcasting Message Data: ', e);
     }
-    console.log(`code run for broadcast. Data: ${JSON.stringify(messageData)}`);
+    
+    // === MESSAGE IGNORES === //
 
+    if (self) return;
+    
     // === GOLD RAIN EVENT LOGIC === //
     if (isRaining) {
         if (message && !rainCatchers.includes(tags.username) && tags.username !== streamerName.toLowerCase()) {
@@ -152,23 +147,22 @@ client.on('message', async (channel, tags, message, self) => {
             console.log(`[RAIN] ${tags.username} caught some gold!`);
         }
     }
-
+    
+    
     // === MISC FUN CHAT RESPONSES === //
 
     // Quick TODO for later: anonymize emotes for modularity and ease of editing
     // Also add the damn ffxiv copypasta to that file. clean code > funny code
     
-    const friendWaves = ['trenti8wave', 'gavins8wave', 'tiredm21wave'];
-    const friendLurks = ['daitan2KodiLurk', 'gavins8lurk'];
     
     // Salute back
     if (message.toLowerCase().includes('o7')) client.say(channel, 'o7');
 
     // Wave back
-    if (message.toLowerCase().includes('o/') || friendWaves.includes(message.toLowerCase())) client.say(channel, 'tiredm21Wave');
+    if (message.toLowerCase().includes('o/') || message.toLowerCase().includes('\o') || friendWaves.includes(message.toLowerCase())) client.say(channel, ''); // Replace message here
 
     // Respond to friends lurking w/ emote
-    if (friendLurks.includes(message.toLowerCase())) client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`);
+    if (friendLurks.includes(message.toLowerCase())) client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`); // Generalize lurk message
 
     if (message.toLowerCase().includes('ffxiv', 'ff14', 'final fantasy 14')) client.say(channel, 'The critically acclaimed MMORPG Final Fantasy XIV? With an expanded free trial which you can play through the entirety of A Realm Reborn and the award-winning Heavensward and Stormblood expansions up to level 70 for free with no restrictions on playtime?');
 
@@ -299,7 +293,7 @@ async function start() {
         if (event.rewardTitle === 'Daily Gold') {
             const newCount = dailyGold(event.userDisplayName);
             client.say(`#${streamerName}`, 
-                `Thank you @${event.userDisplayName} for redeeming your daily gold! You've acquired gold ${newCount[0] ? newCount[0] : 1} times so far and you currently have ${newCount[1] ? newCount[1] : 1} gold in your wallet. Enjoy!`
+                `Thank you @${event.userDisplayName} for redeeming your daily gold! You've acquired gold ${newCount[0] > 1 ? `${newCount[0]} times` : "1 time"} so far and you currently have ${newCount[1]} gold in your wallet. Enjoy!`
             );
         }
 
@@ -347,6 +341,7 @@ async function start() {
     listener.onChannelSubscriptionGift(userId, event => {
         const subAmount = event.amount;
         const subGifter = event.isAnonymous ? 'Anon' : event.gifterDisplayName;
+        console.log("[DEBUG] Gift Sub(s) Received!");
         console.log("Current Gifter: ", subGifter);
 
         addToAlertQueue(relevantUser1 = subGifter, relevantUser2 = undefined, num1 = subAmount, num2 = undefined, alertType = 'gift');
@@ -354,9 +349,7 @@ async function start() {
 
     // Subscription
     listener.onChannelSubscription(userId, event => {
-        if (event.isGift) { // Code would've just run
-            return;
-        }
+        if (event.isGift) return; // Code would've just run
         
         const subscriber = event.userDisplayName;
         console.log("[DEBUG] Sub received!");
@@ -373,8 +366,6 @@ async function start() {
         addToAlertQueue(relevantUser1 = bitGifter, relevantUser2 = undefined, num1 = numBits, num2 = undefined, alertType = 'bits');
     });
 };
-
-start().catch(console.error);
 
 async function testFunctions() {
 
@@ -426,4 +417,5 @@ async function testFunctions() {
     addToAlertQueue("evil larry", undefined, undefined, undefined, 'follow');
 };
 
-if (isTesting) testFunctions().catch(console.error)
+start().catch(console.error);
+if (isTesting) testFunctions().catch(console.error);
