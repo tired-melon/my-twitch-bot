@@ -7,8 +7,14 @@ const fs = require('fs');
 const { parseFile } = require('music-metadata');
 
 
+// === OBS WebSocket Config === //
+
 const obs_host = process.env.OBS_HOST;
 const obs_password = process.env.OBS_PASSWORD;
+
+// Sneaking in canvas size constants
+const CANVASWIDTH = 2560;
+const CANVASHEIGHT = 1369;
 
 (async () => {
     try {
@@ -22,6 +28,167 @@ const obs_password = process.env.OBS_PASSWORD;
         console.error('Failed to connect to OBS WebSocket:', error);
     }
 })();
+
+function disconnectOBS() {
+    obs.disconnect();
+    console.log('Disconnected from OBS WebSocket');
+}
+
+// === OBS Alert Handler Class === //
+
+class AlertEvent{
+    constructor(event, eventType) {
+        this.event = event;
+        this.type = eventType;
+    }
+
+    get eventUserName() {
+        let user;
+        switch (this.type) {
+            case "Follow", "Sub", "Bit":
+                user = this.event.userDisplayName;
+            case "Raid":
+                user = this.event.raidingBroadcasterDisplayName;
+            case "Gift":
+                user = this.event.isAnonymous ? 'Anon' : this.event.gifterDisplayName;
+            default:
+                console.error("[ERROR] Alert Name Switch Statement Failed!");
+                text = "melon screwed this up lol"
+                break;
+        }
+        return user;
+    }
+
+    get eventText() {
+        let text;
+        switch (this.type) {
+            case "Follow":
+                text = "just joined the Horde!";
+            case "Raid":
+                text = `just raided with a party of ${this.event.viewers}`;
+            case "Bit": 
+                text = `just cheered ${this.event.bits} bits!`
+            case "Sub":
+                text = "just subscribed!"
+            case "Gift":
+                text = `just gifted ${this.event.amount} sub${this.event.amount > 1 ? "s" : ""} to the community!`
+            default:
+                console.error("[ERROR] Alert Text Switch Statement Failed!");
+                text = "melon screwed this up lol"
+                break;
+        }
+        return text;
+    }
+     
+    async setup() {
+        const duration = 15000; // in ms
+        const { currentProgramSceneName } = (await obs.call('GetCurrentProgramScene'));
+        const alertNameID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: 'Alert Name'})).sceneItemId;
+        const alertTextID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: 'Alert Text'})).sceneItemId;
+        const gifID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: `${eventType} Gif`})).sceneItemId; 
+
+        // Dimensions
+        const posX = CANVASWIDTH / 2; 
+        const posY = CANVASHEIGHT / 2;
+
+        return {duration, currentProgramSceneName, alertNameID, alertTextID, gifID, posX, posY};
+    }
+
+    setupParams = this.setup();
+
+    async playback(setup=this.setupParams) {
+
+        // Variables //
+        let { duration, currentProgramSceneName, alertNameID, alertTextID, gifID,posX, posY } = (await setup); 
+        
+        try {
+
+            // Sound & Setup //
+            await obs.call('TriggerMediaInputAction', { // Play relevant sound
+                sceneName: currentProgramSceneName,
+                inputName: `${this.type} Sound`,
+                mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART'
+            });
+            await obs.call('SetInputSettings', { // Change alert name text
+                sceneName: currentProgramSceneName,
+                inputName: 'Alert Name',
+                inputSettings: {'text': this.eventUserName},
+                overlay: true
+            });
+            await obs.call('SetInputSettings', { // Change rest of alert text
+                sceneName: currentProgramSceneName,
+                inputName: 'Alert Text',
+                inputSettings: {'text': this.eventText},
+                overlay: true
+            });
+            await obs.call('SetSceneItemTransform', { // Center name text
+                sceneName: currentProgramSceneName,
+                sceneItemId: alertNameID,
+                sceneItemTransform:{
+                    positionX: posX,
+                    positionY: posY,
+                    alignment: 0,
+                    boundsType: 'OBS_BOUNDS_NONE',
+                    boundsAlignment: 0
+                }
+            });
+            await obs.call('SetSceneItemTransform', { // Center rest of text under name text
+                sceneName: currentProgramSceneName,
+                sceneItemId: alertTextID,
+                sceneItemTransform:{
+                    positionX: posX,
+                    positionY: posY + 134,
+                    alignment: 0,
+                    boundsType: 'OBS_BOUNDS_NONE',
+                    boundsAlignment: 0
+                }
+            });
+
+        // Display //
+        await obs.call('SetSceneItemEnabled', { // Enable gif
+            sceneName: currentProgramSceneName,
+            sceneItemId: gifID,
+            sceneItemEnabled: true
+        });
+        await obs.call('SetSceneItemEnabled', { // Enable name text
+            sceneName: currentProgramSceneName,
+            sceneItemId: alertNameID,
+            sceneItemEnabled: true
+        });
+        await obs.call('SetSceneItemEnabled', { // Enable rest of alert text
+            sceneName: currentProgramSceneName,
+            sceneItemId: alertTextID,
+            sceneItemEnabled: true
+        });
+
+        // Wait for audio to end //
+        await new Promise(r => setTimeout(r, duration));
+
+        // Hide //
+        await obs.call('SetSceneItemEnabled', { // Disable rest of alert text
+            sceneName: currentProgramSceneName,
+            sceneItemId: alertTextID,
+            sceneItemEnabled: false
+        });
+        await obs.call('SetSceneItemEnabled', { // Disable name text
+            sceneName: currentProgramSceneName,
+            sceneItemId: alertNameID,
+            sceneItemEnabled: false
+        });
+        await obs.call('SetSceneItemEnabled', { // Disable gif
+            sceneName: currentProgramSceneName,
+            sceneItemId: gifID,
+            sceneItemEnabled: false
+        });
+        await new Promise(r => setTimeout(r, 901)); // Safety delay for fade
+
+        } catch(e) {
+            console.error(`Error with ${this.eventType} Alert: `, e);
+        } 
+    }
+}
+
+// === Isolated Sound Events === //
 
 async function goldSound() {
     try {
@@ -47,16 +214,10 @@ async function purchaseSound() {
     }
 }
 
-function disconnectOBS() {
-    obs.disconnect();
-    console.log('Disconnected from OBS WebSocket');
-}
-
-
 async function ttsRead(file) {
     const { currentProgramSceneName } = await obs.call('GetCurrentProgramScene');
     const metadata = await parseFile(file);
-    const duration = (metadata.format.duration * 1000) || 5000;// Convert to milliseconds
+    const duration = (metadata.format.duration * 1000) || 5000; // Convert to milliseconds
     console.log(`[DEBUG] TTS audio duration: ${duration}ms`);
     console.log(`[DEBUG] If it says 5000ms, the file may be staging a rebellion.`);
     try {
@@ -71,18 +232,19 @@ async function ttsRead(file) {
             sceneItemEnabled: true
         });
     } catch (err) {console.error('Error creating TTS audio source:', err);}
-
-
+    
+    try {
         // Set the audio monitor type to monitor and output
         // This allows the audio to be played through OBS and heard by the streamer
-    try {
+
         await obs.call('SetInputAudioMonitorType', {
             inputName: 'TTS Audio',
             monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT'
         });
     } catch (err) { console.error('Error setting audio monitor type:', err); }
 
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for the input to be created
+    // Wait for the input to be created
+    await new Promise(r => setTimeout(r, 2000)); 
 
     try {
         await obs.call ('TriggerMediaInputAction', {
@@ -112,38 +274,22 @@ async function ttsRead(file) {
 const alertQueue = [];
 let isAlertPlaying = false;
 
+async function addToAlertQueue(event, alertType) {
+    alertQueue.unshift({event, alertType});
+    processAlertQueue();
+    return;
+}
+
 async function processAlertQueue() {
     if (isAlertPlaying || alertQueue.length === 0) return; // already running or nothing to do
     isAlertPlaying = true;
 
     const alert = alertQueue.pop();
-    
-    const alertType = alert.alertType;
 
-    let streamAlert;
-
-    switch (alertType) {
-        case 'follow':
-            streamAlert = followAlert;
-            break;
-        case 'raid':
-            streamAlert = raidAlert; // num1 is raidSize
-            break;
-        case 'sub':
-            streamAlert = subAlert; // num1 is subscriber, num2 is amount of time subbed if not zero
-            break;
-        case 'gift':
-            streamAlert = giftAlert;
-            break;
-        case 'bits':
-            streamAlert = bitAlert;
-            break;
-        default:
-            console.error(`[ERROR] Alert Type not found. Alert Type: ${alertType}`);
-    }
+    const alertEvent = new AlertEvent(alert.event, alert.alertType);
 
     try {
-        await streamAlert(alert.relevantUser1, alert.num1); // waits until playback ends
+        alertEvent.playback() // waits until playback ends
     } catch (err) {
         console.error('Error during Alert playback:', err);
     } finally {
@@ -152,14 +298,8 @@ async function processAlertQueue() {
     }
 }
 
-async function addToAlertQueue(relevantUser1 = '', relevantUser2 = '', num1 = 0, num2 = 0, alertType = '') {
-    alertQueue.unshift({relevantUser1: relevantUser1, relevantUser2: relevantUser2, num1: num1, num2: num2, alertType: alertType});
-    processAlertQueue();
-    return;
-}
-
 // === OBS ALERT HANDLERS === //
-
+/* *** DEPRECIATED ALERT SYSTEM, COMMENTED FOR TEMP REFERENCE ***
 // Raid Alert
 async function raidAlert(raider, size) { // Good Framework for generic event handler, will refactor later
     const duration = 15000; // in ms
@@ -653,7 +793,7 @@ async function bitAlert(gifter, amount) {
     }
     console.log(`[SUCCESS] Bit Alert Played!`);
 };
-
+*/
 
 module.exports = {
     goldSound,

@@ -318,52 +318,40 @@ async function start() {
         }
     });
 
-    // === STREAM ALERTS === /
+    // === STREAM ALERTS === //
 
     // Follow
     listener.onChannelFollow(userId, userId, event => {
-        const follower = event.userDisplayName;
         console.log("[DEBUG] New Follower!");
-
-        addToAlertQueue(relevantUser1 = follower, relevantUser2 = undefined, num1 = undefined, num2 = undefined, alertType = 'follow');
+        addToAlertQueue(event, alertType = 'Follow');
     });
 
     // Raid
     listener.onChannelRaidTo(userId, event => {
-        const raiderName = event.raidingBroadcasterDisplayName;
-        const raidSize = event.viewers;
         console.log("[DEBUG] Raided!");
-
-        addToAlertQueue(relevantUser1 = raiderName, relevantUser2 = undefined, num1 = raidSize, num2 = undefined, alertType = 'raid');
-    }); 
+        addToAlertQueue(event, alertType = 'Raid');
+    });
 
     // Gift Sub
     listener.onChannelSubscriptionGift(userId, event => {
-        const subAmount = event.amount;
         const subGifter = event.isAnonymous ? 'Anon' : event.gifterDisplayName;
         console.log("[DEBUG] Gift Sub(s) Received!");
         console.log("Current Gifter: ", subGifter);
 
-        addToAlertQueue(relevantUser1 = subGifter, relevantUser2 = undefined, num1 = subAmount, num2 = undefined, alertType = 'gift');
+        addToAlertQueue(event, alertType = 'Gift');
     });
 
     // Subscription
     listener.onChannelSubscription(userId, event => {
         if (event.isGift) return; // Code would've just run
-        
-        const subscriber = event.userDisplayName;
         console.log("[DEBUG] Sub received!");
-
-        addToAlertQueue(relevantUser1 = subscriber, relevantUser2 = undefined, num1 = undefined, num2 = undefined, alertType = 'sub');
+        addToAlertQueue(event, alertType = 'Sub');
     });
 
     // Bits
     listener.onChannelCheer(userId, event => {
-        const bitGifter = event.userDisplayName;
-        const numBits = event.bits;
         console.log("[DEBUG] Bits received!");
-
-        addToAlertQueue(relevantUser1 = bitGifter, relevantUser2 = undefined, num1 = numBits, num2 = undefined, alertType = 'bits');
+        addToAlertQueue(event, alertType = 'Bit');
     });
 };
 
