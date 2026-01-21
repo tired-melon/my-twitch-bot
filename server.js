@@ -12,6 +12,8 @@ const streamerName = process.env.CHANNEL;
 const clientId = process.env.STREAMER_CLIENT_ID;
 const streamerAccessToken = process.env.STREAMER_OAUTH_TOKEN;
 const userId = process.env.STREAMER_USER_ID;
+const waveEmote = process.env.WAVE_EMOTE;
+const ffxivCopypasta = process.env.FFXIV
 
 // ----------------------- LOAD DEPENDENCIES ------------------------//
 
@@ -159,20 +161,20 @@ client.on('message', async (channel, tags, message, self) => {
     if (message.toLowerCase().includes('o7')) client.say(channel, 'o7');
 
     // Wave back
-    if (message.toLowerCase().includes('o/') || message.toLowerCase().includes('\o') || friendWaves.includes(message.toLowerCase())) client.say(channel, ''); // Replace message here
+    if (message.toLowerCase().includes('o/') || message.toLowerCase().includes('\o') || friendWaves.includes(message.toLowerCase())) client.say(channel, waveEmote); // Replace message here
 
     // Respond to friends lurking w/ emote
     if (friendLurks.includes(message.toLowerCase())) client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`); // Generalize lurk message
 
-    if (message.toLowerCase().includes('ffxiv', 'ff14', 'final fantasy 14')) client.say(channel, 'The critically acclaimed MMORPG Final Fantasy XIV? With an expanded free trial which you can play through the entirety of A Realm Reborn and the award-winning Heavensward and Stormblood expansions up to level 70 for free with no restrictions on playtime?');
+    if (message.toLowerCase().includes('ffxiv', 'ff14', 'final fantasy 14')) client.say(channel, ffxivCopypasta);
 
     // 'Goodnight' message command to turn off bot from chat
     if (message.toLowerCase().includes(`goodnight ${username}`) &&
         tags.username === streamerName.toLowerCase()) {
-            client.say(channel, `Goodnight! tiredm21Wave`);
+            client.say(channel, `Goodnight! ${waveEmote}`);
             disconnectOBS();
             client.disconnect();
-            console.log(`${username} is now napping until needed again!`)
+            console.log(`${username} is now napping until needed again!`);
             process.exit(0);
     }
 
@@ -300,7 +302,7 @@ async function start() {
     // Hello
 
         if (event.rewardTitle === 'Hello!') {
-            client.say(`#${streamerName}`, 'Hello! tiredm21Wave');
+            client.say(`#${streamerName}`, `Hello! ${waveEmote}`);
         }
     
     // TTS
@@ -396,13 +398,33 @@ async function testFunctions() {
     }, 30000); // Raining gold lasts for 30 seconds
     await new Promise(r => setTimeout(r, 5000)); // 5s delay for audio offset
 
+    // === ALERT TEST EVENT OBJ == //
+
+    const sampleAlertObj = {
+        userDisplayName: "",
+        raidingBroadcasterDisplayName: "",
+        gifterDisplayName: "",
+        viewers: 0,
+        amount: 0,
+        bits: 0
+    }
+    
     // === ALERT TEST FUNCTIONS === //
 
-    addToAlertQueue("testyman", undefined, 42, undefined, 'gift');
-    addToAlertQueue("yeahboiii", undefined, 12, undefined, 'raid');
-    addToAlertQueue("im a sub", undefined, undefined, undefined, 'sub');
-    addToAlertQueue("bitpusher", undefined, 69, undefined, 'bits');
-    addToAlertQueue("evil larry", undefined, undefined, undefined, 'follow');
+    sampleAlertObj.gifterDisplayName, sampleAlertObj.amount = "testyman", 42;
+    addToAlertQueue(sampleAlertObj, 'Gift');
+
+    sampleAlertObj.raidingBroadcasterDisplayName, sampleAlertObj.viewers = "yeahboiii", 67;
+    addToAlertQueue(sampleAlertObj, 'Raid');
+    
+    sampleAlertObj.userDisplayName = "im a sub";
+    addToAlertQueue(sampleAlertObj, 'Sub');
+    
+    sampleAlertObj.userDisplayName = "bitpusher", 69;
+    addToAlertQueue(sampleAlertObj, 'Bit');
+    
+    sampleAlertObj.userDisplayName = "evil larry";
+    addToAlertQueue(sampleAlertObj, 'Follow');
 };
 
 start().catch(console.error);
