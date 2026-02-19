@@ -45,13 +45,16 @@ class AlertEvent {
         switch (this.type) {
             case "Follow", "Sub", "Bit":
                 user = this.event.userDisplayName;
+                break;
             case "Raid":
                 user = this.event.raidingBroadcasterDisplayName;
+                break;
             case "Gift":
                 user = this.event.isAnonymous ? 'Anon' : this.event.gifterDisplayName;
+                break;
             default:
                 console.error("[ERROR] Alert Name Switch Statement Failed!");
-                text = "melon screwed this up lol"
+                user = "melon screwed this up lol"
                 break;
         }
         return user;
@@ -62,14 +65,19 @@ class AlertEvent {
         switch (this.type) {
             case "Follow":
                 text = "just joined the Horde!";
+                break;
             case "Raid":
                 text = `just raided with a party of ${this.event.viewers}`;
+                break;
             case "Bit": 
                 text = `just cheered ${this.event.bits} bits!`
+                break;
             case "Sub":
                 text = "just subscribed!"
+                break;
             case "Gift":
                 text = `just gifted ${this.event.amount} sub${this.event.amount > 1 ? "s" : ""} to the community!`
+                break;
             default:
                 console.error("[ERROR] Alert Text Switch Statement Failed!");
                 text = "melon screwed this up lol"
@@ -83,7 +91,7 @@ class AlertEvent {
         const { currentProgramSceneName } = (await obs.call('GetCurrentProgramScene'));
         const alertNameID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: 'Alert Name'})).sceneItemId;
         const alertTextID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: 'Alert Text'})).sceneItemId;
-        const gifID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: `${eventType} Gif`})).sceneItemId; 
+        const gifID = (await obs.call('GetSceneItemId', {sceneName: currentProgramSceneName, sourceName: `${this.type} Gif`})).sceneItemId; 
 
         // Dimensions
         const posX = CANVASWIDTH / 2; 

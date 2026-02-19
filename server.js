@@ -161,7 +161,7 @@ client.on('message', async (channel, tags, message, self) => {
     if (message.toLowerCase().includes('o7')) client.say(channel, 'o7');
 
     // Wave back
-    if (message.toLowerCase().includes('o/') || message.toLowerCase().includes('\o') || friendWaves.includes(message.toLowerCase())) client.say(channel, waveEmote); // Replace message here
+    if (message.toLowerCase().includes('o/') || friendWaves.includes(message.toLowerCase())) client.say(channel, waveEmote);
 
     // Respond to friends lurking w/ emote
     if (friendLurks.includes(message.toLowerCase())) client.say(channel, `${tags.username} sinks into the abyss of treasure. Thanks for the lurk!`); // Generalize lurk message
@@ -265,7 +265,7 @@ client.on('message', async (channel, tags, message, self) => {
                 for (let m in response) {
                     setTimeout(() => {
                         client.say(channel, response[m])
-                        }, i);
+                        }, delay);
                     delay += 2000;
                 }
             
@@ -347,7 +347,7 @@ async function start() {
     listener.onChannelSubscription(userId, event => {
         if (event.isGift) return; // Code would've just run
         console.log("[DEBUG] Sub received!");
-        addToAlertQueue(event, alertType = 'Sub');
+        addToAlertQueue(event, alertType = "Sub");
     });
 
     // Bits
